@@ -1,5 +1,5 @@
 import { ANALYSIS_FIRST_SEQUENCE, DELIVERABLE_DEPENDENCIES, OPTION_INDEX, TEXT_ENCODER } from './config.js';
-import { detectImageProvider, buildAssets } from './assets.js';
+import { detectImageProvider, buildAssets, resolveImageGenerationConfig } from './assets.js';
 import { inferProduct, buildBrandSystem, buildStrategy, buildCampaignPlan } from './strategy.js';
 import { buildDeliverableMap } from './deliverables.js';
 import { arrayBufferToBase64 } from './utils.js';
@@ -8,9 +8,10 @@ export async function buildExperience(payload, env) {
   const name = String(payload.name || '').trim();
   const description = String(payload.description || '').trim();
   const objective = String(payload.objective || 'Create a premium brand system and a board-ready marketing growth pack').trim();
-  const requestedItems = payload.selected_items;
+  const requestedItems = Array.isArray(payload.selected_items) ? payload.selected_items : [];
   const selectedItems = normalizeSelectedItems(requestedItems);
-  const imageProvider = detectImageProvider(env);
+  const imageRuntime = resolveImageGenerationConfig(payload, env);
+  const imageProvider = detectImageProvider(imageRuntime);
 
   if (!name || !description) {
     throw new Error('Add product name and description.');
@@ -20,7 +21,7 @@ export async function buildExperience(payload, env) {
   const brand = buildBrandSystem(product);
   const strategy = buildStrategy(product, brand);
   const campaignPlan = buildCampaignPlan(product, objective);
-  const assets = await buildAssets(product, brand, strategy, campaignPlan, imageProvider, env);
+  const assets = await buildAssets(product, brand, strategy, campaignPlan, imageProvider, imageRuntime);
   const deliverableMap = buildDeliverableMap(product, brand, strategy, campaignPlan, assets);
 
   const selectedOutputs = selectedItems.map((itemId) => {
@@ -42,6 +43,8 @@ export async function buildExperience(payload, env) {
     };
   });
 
+  const autoAddedDependencies = selectedItems.filter((item) => !requestedItems.includes(item));
+
   return {
     slug: product.slug,
     product_name: product.name,
@@ -52,7 +55,7 @@ export async function buildExperience(payload, env) {
       id,
       label: OPTION_INDEX[id],
     })),
-    auto_added_dependencies: selectedItems.filter((item) => !requestedItems.includes(item)),
+    auto_added_dependencies: autoAddedDependencies,
     brand_snapshot: {
       tagline: brand.tagline,
       vision: brand.vision,

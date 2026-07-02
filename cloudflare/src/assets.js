@@ -1,6 +1,7 @@
 import { primaryCta, northStarMetric, buildHashtags, isFashionProduct } from './strategy.js';
+import { escapeHtml } from './utils.js';
 
-export async function buildAssets(product, brand, strategy, campaignPlan, imageProvider, env) {
+export async function buildAssets(product, brand, strategy, campaignPlan, imageProvider, imageRuntime) {
   const socialChannel = strategy.channelPriorities[0]?.channel || 'linkedin';
   const logoSvg = buildLogoSvg(product, brand);
   const iconSvg = buildIconSvg(product, brand);
@@ -23,7 +24,7 @@ export async function buildAssets(product, brand, strategy, campaignPlan, imageP
     `${socialCreativePrompt} Variant direction: bold single-image hero with one focal product frame.`,
     `${socialCreativePrompt} Variant direction: premium editorial card with contrast, texture, and gifting cues.`,
   ];
-  const generatedImages = await generateVisualAssets({ product, logoPrompt, moodboardPrompt, socialCreativePrompt, logoVariantPrompts, socialVariantPrompts, env, imageProvider });
+  const generatedImages = await generateVisualAssets({ product, logoPrompt, moodboardPrompt, socialCreativePrompt, logoVariantPrompts, socialVariantPrompts, imageRuntime, imageProvider });
 
   const socialPosts = fashion ? [
     {
@@ -181,21 +182,73 @@ export async function buildAssets(product, brand, strategy, campaignPlan, imageP
   };
 }
 
-export function detectImageProvider(env = {}) {
-  if (env.GEMINI_API_KEY) return { key: 'gemini', label: 'Gemini 3.1 Flash Image', ready: true };
-  if (env.OPENAI_API_KEY) return { key: 'openai', label: 'OpenAI image generation', ready: true };
-  return { key: 'prompt-only', label: 'Nano/Banana/OpenAI/Gemini-ready prompt pack', ready: false };
-}
+export function resolveImageGenerationConfig(payload = {}, env = {}) {
+  const byok = payload?.byok || {};
+  const rawKey = String(byok.api_key || payload.api_key || '').trim();
+  const inferredProvider = inferProviderFromKey(rawKey);
+  const requestedProvider = normalizeProvider(byok.provider || payload.image_provider || inferredProvider || '');
 
-export async function generateVisualAssets({ product, logoPrompt, moodboardPrompt, socialCreativePrompt, logoVariantPrompts = [], socialVariantPrompts = [], env, imageProvider }) {
-  if (!env.GEMINI_API_KEY) {
-    return { logo: null, moodboard: null, social: null, logoVariants: [], socialVariants: [], provider: imageProvider.key };
+  if (rawKey && requestedProvider) {
+    return {
+      key: requestedProvider,
+      apiKey: rawKey,
+      ready: true,
+      source: 'byok',
+    };
   }
 
+  if (env.GEMINI_API_KEY) {
+    return {
+      key: 'gemini',
+      apiKey: env.GEMINI_API_KEY,
+      ready: true,
+      source: 'server',
+    };
+  }
+
+  if (env.OPENAI_API_KEY) {
+    return {
+      key: 'openai',
+      apiKey: env.OPENAI_API_KEY,
+      ready: true,
+      source: 'server',
+    };
+  }
+
+  return {
+    key: requestedProvider || 'prompt-only',
+    apiKey: '',
+    ready: false,
+    source: 'prompt-only',
+  };
+}
+
+export function detectImageProvider(imageRuntime = {}) {
+  if (imageRuntime.key === 'gemini' && imageRuntime.ready) {
+    return { key: 'gemini', label: 'Gemini 3.1 Flash Image', ready: true, source: imageRuntime.source, byok: imageRuntime.source === 'byok' };
+  }
+  if (imageRuntime.key === 'openai' && imageRuntime.ready) {
+    return { key: 'openai', label: 'OpenAI gpt-image-1', ready: true, source: imageRuntime.source, byok: imageRuntime.source === 'byok' };
+  }
+  if (imageRuntime.key === 'gemini' || imageRuntime.key === 'openai') {
+    return { key: imageRuntime.key, label: imageRuntime.key === 'gemini' ? 'Gemini 3.1 Flash Image' : 'OpenAI gpt-image-1', ready: false, source: 'prompt-only', byok: false };
+  }
+  return { key: 'prompt-only', label: 'Nano/Banana/OpenAI/Gemini-ready prompt pack', ready: false, source: 'prompt-only', byok: false };
+}
+
+export async function generateVisualAssets({ product, logoPrompt, moodboardPrompt, socialCreativePrompt, logoVariantPrompts = [], socialVariantPrompts = [], imageRuntime, imageProvider }) {
+  if (!imageRuntime?.ready || !imageRuntime?.apiKey) {
+    return { logo: null, moodboard: null, social: null, logoVariants: [], socialVariants: [], provider: imageProvider.key, source: imageProvider.source };
+  }
+
+  const generator = imageRuntime.key === 'openai'
+    ? (prompt) => generateOpenAiImage(imageRuntime.apiKey, prompt)
+    : (prompt) => generateGeminiImage(imageRuntime.apiKey, prompt);
+
   const [moodboard, ...variantResults] = await Promise.allSettled([
-    generateGeminiImage(env.GEMINI_API_KEY, moodboardPrompt),
-    ...logoVariantPrompts.map((prompt) => generateGeminiImage(env.GEMINI_API_KEY, prompt)),
-    ...socialVariantPrompts.map((prompt) => generateGeminiImage(env.GEMINI_API_KEY, prompt)),
+    generator(moodboardPrompt),
+    ...logoVariantPrompts.map((prompt) => generator(prompt)),
+    ...socialVariantPrompts.map((prompt) => generator(prompt)),
   ]);
 
   const logoVariants = variantResults.slice(0, logoVariantPrompts.length).filter((item) => item.status === 'fulfilled').map((item) => item.value);
@@ -207,7 +260,8 @@ export async function generateVisualAssets({ product, logoPrompt, moodboardPromp
     social: socialVariants[0] || null,
     logoVariants,
     socialVariants,
-    provider: 'gemini',
+    provider: imageRuntime.key,
+    source: imageRuntime.source,
     product: product.slug,
   };
 }
@@ -240,6 +294,51 @@ export async function generateGeminiImage(apiKey, prompt) {
     base64: inlineData.data,
     prompt,
   };
+}
+
+export async function generateOpenAiImage(apiKey, prompt) {
+  const response = await fetch('https://api.openai.com/v1/images/generations', {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      authorization: `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      model: 'gpt-image-1',
+      prompt,
+      size: '1024x1024',
+    }),
+  });
+
+  if (!response.ok) {
+    const detail = await response.text();
+    throw new Error(`OpenAI image generation failed: ${response.status} ${detail.slice(0, 240)}`);
+  }
+
+  const data = await response.json();
+  const image = data?.data?.[0];
+  if (!image?.b64_json) {
+    throw new Error('OpenAI did not return image bytes.');
+  }
+
+  return {
+    mimeType: 'image/png',
+    base64: image.b64_json,
+    prompt,
+  };
+}
+
+export function normalizeProvider(value) {
+  const normalized = String(value || '').trim().toLowerCase();
+  if (normalized === 'gemini' || normalized === 'openai') return normalized;
+  return '';
+}
+
+export function inferProviderFromKey(apiKey) {
+  if (!apiKey) return '';
+  if (apiKey.startsWith('AIza')) return 'gemini';
+  if (apiKey.startsWith('sk-')) return 'openai';
+  return '';
 }
 
 export function dataUri(image) {
