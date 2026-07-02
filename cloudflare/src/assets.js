@@ -225,13 +225,13 @@ export function resolveImageGenerationConfig(payload = {}, env = {}) {
 
 export function detectImageProvider(imageRuntime = {}) {
   if (imageRuntime.key === 'gemini' && imageRuntime.ready) {
-    return { key: 'gemini', label: 'Imagen 3', ready: true, source: imageRuntime.source, byok: imageRuntime.source === 'byok' };
+    return { key: 'gemini', label: 'Gemini 2.5 Flash Image', ready: true, source: imageRuntime.source, byok: imageRuntime.source === 'byok' };
   }
   if (imageRuntime.key === 'openai' && imageRuntime.ready) {
     return { key: 'openai', label: 'OpenAI gpt-image-1', ready: true, source: imageRuntime.source, byok: imageRuntime.source === 'byok' };
   }
   if (imageRuntime.key === 'gemini' || imageRuntime.key === 'openai') {
-    return { key: imageRuntime.key, label: imageRuntime.key === 'gemini' ? 'Imagen 3' : 'OpenAI gpt-image-1', ready: false, source: 'prompt-only', byok: false };
+    return { key: imageRuntime.key, label: imageRuntime.key === 'gemini' ? 'Gemini 2.5 Flash Image' : 'OpenAI gpt-image-1', ready: false, source: 'prompt-only', byok: false };
   }
   return { key: 'prompt-only', label: 'Nano/Banana/OpenAI/Gemini-ready prompt pack', ready: false, source: 'prompt-only', byok: false };
 }
@@ -267,54 +267,34 @@ export async function generateVisualAssets({ product, logoPrompt, moodboardPromp
 }
 
 export async function generateGeminiImage(apiKey, prompt) {
-  // Use Imagen 3 for high-quality image generation
-  const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-002:predict?key=${apiKey}`, {
+  const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent?key=${apiKey}`, {
     method: 'POST',
     headers: {
       'content-type': 'application/json',
     },
     body: JSON.stringify({
-      instances: [{ prompt }],
-      parameters: {
-        sampleCount: 1,
-        aspectRatio: '1:1',
+      contents: [{ parts: [{ text: prompt }] }],
+      generationConfig: {
+        responseModalities: ['IMAGE', 'TEXT'],
       },
     }),
   });
 
   if (!response.ok) {
-    // Fallback: try gemini-2.0-flash-exp with native image generation
-    const fallbackResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${apiKey}`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: `Generate an image: ${prompt}` }] }],
-        generationConfig: { responseModalities: ['IMAGE'] },
-      }),
-    });
-
-    if (!fallbackResponse.ok) {
-      const detail = await fallbackResponse.text();
-      throw new Error(`Gemini image generation failed: ${fallbackResponse.status} ${detail.slice(0, 240)}`);
-    }
-
-    const fallbackData = await fallbackResponse.json();
-    const inlineData = fallbackData?.candidates?.[0]?.content?.parts?.find((part) => part.inlineData)?.inlineData;
-    if (!inlineData?.data || !inlineData?.mimeType) {
-      throw new Error('Gemini did not return image bytes.');
-    }
-    return { mimeType: inlineData.mimeType, base64: inlineData.data, prompt };
+    const detail = await response.text();
+    throw new Error(`Gemini image generation failed: ${response.status} ${detail.slice(0, 320)}`);
   }
 
   const data = await response.json();
-  const prediction = data?.predictions?.[0];
-  if (!prediction?.bytesBase64Encoded) {
-    throw new Error('Imagen did not return image bytes.');
+  const inlineData = data?.candidates?.[0]?.content?.parts?.find((part) => part.inlineData)?.inlineData;
+  if (!inlineData?.data || !inlineData?.mimeType) {
+    const textPart = data?.candidates?.[0]?.content?.parts?.find((part) => part.text)?.text;
+    throw new Error(`Gemini did not return image bytes.${textPart ? ` Response text: ${textPart.slice(0, 180)}` : ''}`);
   }
 
   return {
-    mimeType: prediction.mimeType || 'image/png',
-    base64: prediction.bytesBase64Encoded,
+    mimeType: inlineData.mimeType,
+    base64: inlineData.data,
     prompt,
   };
 }
