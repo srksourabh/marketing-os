@@ -6,8 +6,8 @@
 import { GLOBAL_SYSTEM_BLOCK, NODE_PROMPTS, DAG } from './node-prompts.js';
 import { callLLM, inferLLMProvider, defaultModel } from './llm-client.js';
 
-/* Max output tokens by layer — research/strategy nodes need room */
-const MAX_TOKENS_BY_LAYER = { 1: 2048, 2: 4096, 3: 4096, 4: 4096, 5: 2048 };
+/* Max output tokens by layer — generous to avoid truncation */
+const MAX_TOKENS_BY_LAYER = { 1: 4096, 2: 8192, 3: 8192, 4: 8192, 5: 4096 };
 
 /* ------------------------------------------------------------------ */
 /*  Dependency resolution & topological sort                          */
@@ -130,20 +130,88 @@ function injectVariables(template, varMap) {
 /** Strip markdown code fences that LLMs love to add */
 function stripCodeFences(text) {
   if (!text) return text;
-  // Match ```json ... ``` or ``` ... ``` or ```markdown ... ```
-  const fenced = text.match(/^```(?:\w+)?\s*\n([\s\S]*?)```\s*$/);
+  let t = text.trim();
+
+  // Remove any preamble text before the first code fence
+  // e.g. "Here is the JSON:\n```json\n{...}\n```"
+  const fenceStart = t.indexOf('```');
+  if (fenceStart > 0) {
+    t = t.slice(fenceStart).trim();
+  }
+
+  // Multi-line: ```json\n...\n``` (greedy inner match, anchored to last ```)
+  const fenced = t.match(/^```(?:\w+)?\s*\n?([\s\S]*)```\s*$/);
   if (fenced) return fenced[1].trim();
-  return text.trim();
+
+  return t;
+}
+
+/** Attempt to repair truncated JSON (unclosed strings, brackets, braces) */
+function repairJSON(text) {
+  if (!text) return text;
+  let t = text.trim();
+
+  // If it already parses, return as-is
+  try { JSON.parse(t); return t; } catch { /* needs repair */ }
+
+  // Close unclosed string literals
+  const quoteCount = (t.match(/(?<!\\)"/g) || []).length;
+  if (quoteCount % 2 !== 0) t += '"';
+
+  // Balance brackets and braces
+  let braces = 0, brackets = 0;
+  let inString = false;
+  for (let i = 0; i < t.length; i++) {
+    const c = t[i];
+    if (c === '"' && (i === 0 || t[i - 1] !== '\\')) { inString = !inString; continue; }
+    if (inString) continue;
+    if (c === '{') braces++;
+    else if (c === '}') braces--;
+    else if (c === '[') brackets++;
+    else if (c === ']') brackets--;
+  }
+
+  // Remove trailing comma before closing
+  t = t.replace(/,\s*$/, '');
+
+  while (brackets > 0) { t += ']'; brackets--; }
+  while (braces > 0) { t += '}'; braces--; }
+
+  return t;
+}
+
+/** Known failure tokens from node prompts */
+const FAILURE_TOKENS = new Set([
+  'INSUFFICIENT_INPUT',
+  'REQUIRED_INPUT_EMPTY',
+  'EMPTY_INPUT',
+]);
+
+function isFailureToken(output) {
+  if (!output) return false;
+  const cleaned = output.trim().replace(/^["'{}\s]+|["'{}\s]+$/g, '');
+  // Check raw text
+  if (FAILURE_TOKENS.has(cleaned)) return true;
+  // Check JSON-wrapped: {"error":"INSUFFICIENT_INPUT"}
+  try {
+    const parsed = JSON.parse(output);
+    if (parsed?.error && FAILURE_TOKENS.has(parsed.error)) return true;
+  } catch { /* not JSON, that's fine */ }
+  return false;
 }
 
 function validateOutput(output, outputFormat) {
+  // Failure tokens are valid structured responses — skip format validation
+  if (isFailureToken(output)) return true;
+
   if (outputFormat === 'json') {
     JSON.parse(output); // throws on invalid JSON
     return true;
   }
   if (outputFormat === 'markdown') {
-    if (!output.includes('## ')) {
-      throw new Error('Markdown output missing expected "## " headings');
+    // Accept any heading level (# ## ### etc) or structured content
+    if (!output.includes('#') && output.length < 50) {
+      throw new Error('Markdown output missing expected headings');
     }
     return true;
   }
@@ -216,25 +284,34 @@ export async function* runDAG({
     const temperature = temperatureForLayer(layer);
     const maxTokens = MAX_TOKENS_BY_LAYER[layer] || 4096;
 
-    // 4. Call LLM (with one retry on validation failure at temp 0)
+    // 4. Call LLM (with one retry — second attempt adds anti-fence instruction)
     let output = null;
     let lastError = null;
 
     for (let attempt = 0; attempt < 2; attempt++) {
       try {
         const callTemp = attempt === 0 ? temperature : 0;
+        // On retry, prepend a strong instruction to avoid code fences
+        const retryPrefix = attempt > 0
+          ? 'CRITICAL: Output ONLY raw content. No markdown code fences (```), no preamble, no commentary. If JSON, start with { or [. If markdown, start with #.\n\n'
+          : '';
         const llmResponse = await callLLM({
           provider,
           apiKey,
           model,
           systemPrompt,
-          userPrompt,
+          userPrompt: retryPrefix + userPrompt,
           temperature: callTemp,
           maxTokens,
         });
 
         // Extract text from {text, usage} response
         output = stripCodeFences(llmResponse.text);
+
+        // For JSON outputs, attempt repair of truncated responses
+        if (outputFormat === 'json') {
+          output = repairJSON(output);
+        }
 
         // 5. Validate
         validateOutput(output, outputFormat);

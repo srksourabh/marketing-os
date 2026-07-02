@@ -42,7 +42,7 @@ export function defaultFastModel(provider) {
   const models = {
     anthropic: 'claude-haiku-4-20250414',
     openai: 'gpt-4o-mini',
-    gemini: 'gemini-2.0-flash',
+    gemini: 'gemini-2.5-flash',
     openrouter: 'anthropic/claude-haiku-4',
   };
   return models[provider] || 'gpt-4o-mini';
