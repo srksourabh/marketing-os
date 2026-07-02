@@ -263,6 +263,51 @@
       social_posts: ['market_research', 'competitor_intel', 'customer_insights', 'brand_identity_suite', 'logo_pack'],
     };
 
+    const DAG_NODE_IDS = new Set([
+      'product_summary','brand_context','brand_voice','icp',
+      'market_research','customer_insights','competitor_intel',
+      'gtm_strategy','channel_priorities','campaign_plan','analytics_plan',
+      'seo_brief','blog_briefs','social_posts','email_sequence',
+      'landing_page_copy','cro_recommendations','social_posting_plan',
+      'content_backlog','execution_backlog','draft_queue','cron_manifest','content_gen_prompt'
+    ]);
+
+    const COMPOSITE_TO_NODES = {
+      ceo_market_report: ['market_research', 'competitor_intel', 'customer_insights'],
+      brand_identity_suite: ['product_summary', 'brand_context', 'brand_voice', 'icp'],
+      logo_pack: ['product_summary', 'brand_context'],
+      master_board_pack: [
+        'product_summary','brand_context','brand_voice','icp',
+        'market_research','customer_insights','competitor_intel',
+        'gtm_strategy','channel_priorities','campaign_plan','analytics_plan',
+        'seo_brief','blog_briefs','social_posts','email_sequence',
+        'landing_page_copy','cro_recommendations','social_posting_plan',
+        'content_backlog','execution_backlog','draft_queue','cron_manifest','content_gen_prompt'
+      ],
+      full_pack_bundle: [
+        'product_summary','brand_context','brand_voice','icp',
+        'market_research','customer_insights','competitor_intel',
+        'gtm_strategy','channel_priorities','campaign_plan','analytics_plan',
+        'seo_brief','blog_briefs','social_posts','email_sequence',
+        'landing_page_copy','cro_recommendations','social_posting_plan',
+        'content_backlog','execution_backlog','draft_queue','cron_manifest','content_gen_prompt'
+      ],
+    };
+
+    const EXPORT_ONLY_IDS = new Set(['master_board_pack', 'full_pack_bundle']);
+
+    function expandSelectedNodes(selectedItems) {
+      const expanded = new Set();
+      for (const item of selectedItems) {
+        if (DAG_NODE_IDS.has(item)) {
+          expanded.add(item);
+          continue;
+        }
+        for (const mapped of (COMPOSITE_TO_NODES[item] || [])) expanded.add(mapped);
+      }
+      return Array.from(expanded);
+    }
+
     let currentMode = 'ai';
 
     // No mode tabs — AI mode only
@@ -277,7 +322,7 @@
         .join('');
       deliverableList.innerHTML = data.items.map((item) => `
         <label class="check">
-          <input type="checkbox" name="selected_items" value="${item.id}" checked />
+          <input type="checkbox" name="selected_items" value="${item.id}" ${EXPORT_ONLY_IDS.has(item.id) ? '' : 'checked'} />
           <div>
             <strong>${item.label}</strong>
             <span>Generate this as a presentable deliverable.</span>
@@ -420,14 +465,28 @@
         statusNode.classList.add('error');
         return;
       }
-      const llmProvider = document.getElementById('llm-provider').value || undefined;
+
+      const selectedNodes = expandSelectedNodes(selectedItems);
+      const exportSelections = selectedItems.filter((item) => EXPORT_ONLY_IDS.has(item));
+      if (selectedNodes.length === 0) {
+        statusNode.textContent = 'No AI generation nodes were selected.';
+        statusNode.classList.add('error');
+        return;
+      }
 
       progressPanel.hidden = false;
-      statusNode.textContent = 'Starting AI-powered generation...';
+      if (exportSelections.includes('full_pack_bundle')) {
+        statusNode.textContent = `Running AI generation for ${selectedNodes.length} core nodes. ZIP packaging happens after results are ready.`;
+      } else if (exportSelections.includes('master_board_pack')) {
+        statusNode.textContent = `Running AI generation for ${selectedNodes.length} core nodes. Master board pack is assembled after results are ready.`;
+      } else {
+        statusNode.textContent = `Starting AI-powered generation for ${selectedNodes.length} core nodes...`;
+      }
 
+      const llmProvider = document.getElementById('llm-provider').value || undefined;
       const payload = {
         name, description,
-        selected_nodes: selectedItems,
+        selected_nodes: selectedNodes,
         byok: {
           llm_key: llmKey,
           llm_provider: llmProvider,
