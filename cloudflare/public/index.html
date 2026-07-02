@@ -587,7 +587,10 @@
           html += `<div style="text-align:center"><div style="font-size:12px;color:#98b5ff;margin-bottom:6px">APP ICON</div><img src="data:${data.icon.mimeType};base64,${data.icon.base64}" style="max-width:160px;border-radius:16px;border:1px solid rgba(148,163,184,0.12)" /></div>`;
         }
         if (!data.logo?.base64 && !data.icon?.base64) {
-          html += '<div style="color:var(--muted)">Image generation completed but no images were returned.</div>';
+          const errors = [];
+          if (data.logoError) errors.push(`Logo: ${data.logoError}`);
+          if (data.iconError) errors.push(`Icon: ${data.iconError}`);
+          html += `<div style="color:#fecdd3">${errors.length ? errors.join('<br/>') : 'Image generation completed but no images were returned.'}</div>`;
         }
         html += '</div>';
         if (data.logoPrompt) {

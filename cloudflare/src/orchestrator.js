@@ -371,13 +371,16 @@ export async function* runDAG({
         const logoImages = {
           logo: results[0].status === 'fulfilled' ? results[0].value : null,
           icon: results[1].status === 'fulfilled' ? results[1].value : null,
+          logoError: results[0].status === 'rejected' ? results[0].reason?.message : null,
+          iconError: results[1].status === 'rejected' ? results[1].reason?.message : null,
           logoPrompt,
           iconPrompt,
           provider: imageConfig.provider,
         };
 
         artifacts.logo_generation = JSON.stringify(logoImages);
-        yield { type: 'node_complete', nodeId: 'logo_generation', label: 'Logo Generation', output: JSON.stringify({ status: 'ok', provider: imageConfig.provider, logo: !!logoImages.logo, icon: !!logoImages.icon }) };
+        const logoErrors = [logoImages.logoError, logoImages.iconError].filter(Boolean);
+        yield { type: 'node_complete', nodeId: 'logo_generation', label: 'Logo Generation', output: JSON.stringify({ status: logoImages.logo || logoImages.icon ? 'ok' : 'failed', provider: imageConfig.provider, logo: !!logoImages.logo, icon: !!logoImages.icon, errors: logoErrors.length ? logoErrors : undefined }) };
       } catch (err) {
         yield { type: 'node_error', nodeId: 'logo_generation', error: err.message || 'Logo generation failed' };
       }
