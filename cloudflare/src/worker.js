@@ -72,10 +72,15 @@ export default {
 
         const llmConfig = { provider, apiKey: llmKey, reasoningModel, fastModel };
 
-        // Image generation config (optional)
-        const imgKey = (byok.image_key || '').trim();
-        const imgProvider = byok.image_provider || inferProviderFromKey(imgKey);
-        const imageConfig = imgKey ? { apiKey: imgKey, provider: imgProvider || 'gemini' } : null;
+        // Image generation config.
+        // Fallback: if no separate image key is provided, reuse the main LLM key
+        // when it is a Gemini or OpenAI key.
+        const explicitImgKey = (byok.image_key || '').trim();
+        const explicitImgProvider = byok.image_provider || inferProviderFromKey(explicitImgKey);
+        const sharedKeyProvider = (provider === 'gemini' || provider === 'openai') ? provider : '';
+        const imgKey = explicitImgKey || (sharedKeyProvider ? llmKey : '');
+        const imgProvider = explicitImgProvider || (explicitImgKey ? inferProviderFromKey(explicitImgKey) : sharedKeyProvider);
+        const imageConfig = imgKey && imgProvider ? { apiKey: imgKey, provider: imgProvider } : null;
 
         const encoder = new TextEncoder();
         const { readable, writable } = new TransformStream();
