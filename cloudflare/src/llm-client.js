@@ -1,23 +1,25 @@
 /**
  * Multi-provider LLM text generation client for Cloudflare Workers.
+ * Supports: Anthropic, OpenAI, Google Gemini, OpenRouter.
  * No npm dependencies — uses only the Fetch API.
  */
 
 /**
  * Infer the LLM provider from an API key prefix.
  * @param {string} apiKey
- * @returns {'anthropic'|'openai'|'gemini'|null}
+ * @returns {'anthropic'|'openai'|'gemini'|'openrouter'|null}
  */
 export function inferLLMProvider(apiKey) {
   if (!apiKey || typeof apiKey !== 'string') return null;
   if (apiKey.startsWith('sk-ant-')) return 'anthropic';
-  if (apiKey.startsWith('sk-')) return 'openai';
+  if (apiKey.startsWith('sk-or-')) return 'openrouter';
+  if (apiKey.startsWith('sk-proj-') || apiKey.startsWith('sk-')) return 'openai';
   if (apiKey.startsWith('AIza')) return 'gemini';
   return null;
 }
 
 /**
- * Return the default model for a given provider.
+ * Return the default reasoning-tier model for a given provider.
  * @param {string} provider
  * @returns {string|undefined}
  */
@@ -26,20 +28,36 @@ export function defaultModel(provider) {
     anthropic: 'claude-sonnet-4-20250514',
     openai: 'gpt-4o',
     gemini: 'gemini-2.5-flash',
+    openrouter: 'anthropic/claude-sonnet-4',
   };
   return models[provider];
 }
 
 /**
+ * Return the default fast-tier model for a given provider.
+ * @param {string} provider
+ * @returns {string}
+ */
+export function defaultFastModel(provider) {
+  const models = {
+    anthropic: 'claude-haiku-4-20250414',
+    openai: 'gpt-4o-mini',
+    gemini: 'gemini-2.0-flash',
+    openrouter: 'anthropic/claude-haiku-4',
+  };
+  return models[provider] || 'gpt-4o-mini';
+}
+
+/**
  * Call an LLM provider and return generated text with usage info.
  * @param {Object} opts
- * @param {string} opts.provider - 'anthropic' | 'openai' | 'gemini'
+ * @param {string} opts.provider - 'anthropic' | 'openai' | 'gemini' | 'openrouter'
  * @param {string} opts.apiKey
  * @param {string} [opts.model] - Falls back to defaultModel(provider)
  * @param {string} [opts.systemPrompt]
  * @param {string} opts.userPrompt
  * @param {number} [opts.temperature=0.7]
- * @param {number} [opts.maxTokens=1024]
+ * @param {number} [opts.maxTokens=4096]
  * @returns {Promise<{text: string, usage: {inputTokens: number, outputTokens: number}}>}
  */
 export async function callLLM({
@@ -62,9 +80,16 @@ export async function callLLM({
   if (provider === 'gemini') {
     return callGemini({ apiKey, model: resolvedModel, systemPrompt, userPrompt, temperature, maxTokens });
   }
+  if (provider === 'openrouter') {
+    return callOpenRouter({ apiKey, model: resolvedModel, systemPrompt, userPrompt, temperature, maxTokens });
+  }
 
-  throw new Error(`Unsupported LLM provider: ${provider}`);
+  throw new Error(`Unsupported LLM provider: ${provider}. Use anthropic, openai, gemini, or openrouter.`);
 }
+
+/* ------------------------------------------------------------------ */
+/*  Provider implementations                                          */
+/* ------------------------------------------------------------------ */
 
 async function callAnthropic({ apiKey, model, systemPrompt, userPrompt, temperature, maxTokens }) {
   const url = 'https://api.anthropic.com/v1/messages';
@@ -86,9 +111,9 @@ async function callAnthropic({ apiKey, model, systemPrompt, userPrompt, temperat
     body: JSON.stringify(body),
   });
 
-  if (res.status !== 200) {
+  if (!res.ok) {
     const errBody = await res.text();
-    throw new Error(`anthropic error ${res.status}: ${errBody.slice(0, 300)}`);
+    throw new Error(`Anthropic error ${res.status}: ${errBody.slice(0, 300)}`);
   }
 
   const data = await res.json();
@@ -106,7 +131,7 @@ async function callOpenAI({ apiKey, model, systemPrompt, userPrompt, temperature
   const body = {
     model,
     temperature,
-    max_tokens: maxTokens,
+    max_completion_tokens: maxTokens,
     messages: [
       { role: 'system', content: systemPrompt },
       { role: 'user', content: userPrompt },
@@ -122,9 +147,9 @@ async function callOpenAI({ apiKey, model, systemPrompt, userPrompt, temperature
     body: JSON.stringify(body),
   });
 
-  if (res.status !== 200) {
+  if (!res.ok) {
     const errBody = await res.text();
-    throw new Error(`openai error ${res.status}: ${errBody.slice(0, 300)}`);
+    throw new Error(`OpenAI error ${res.status}: ${errBody.slice(0, 300)}`);
   }
 
   const data = await res.json();
@@ -154,9 +179,9 @@ async function callGemini({ apiKey, model, systemPrompt, userPrompt, temperature
     body: JSON.stringify(body),
   });
 
-  if (res.status !== 200) {
+  if (!res.ok) {
     const errBody = await res.text();
-    throw new Error(`gemini error ${res.status}: ${errBody.slice(0, 300)}`);
+    throw new Error(`Gemini error ${res.status}: ${errBody.slice(0, 300)}`);
   }
 
   const data = await res.json();
@@ -165,6 +190,44 @@ async function callGemini({ apiKey, model, systemPrompt, userPrompt, temperature
     usage: {
       inputTokens: data.usageMetadata?.promptTokenCount ?? 0,
       outputTokens: data.usageMetadata?.candidatesTokenCount ?? 0,
+    },
+  };
+}
+
+async function callOpenRouter({ apiKey, model, systemPrompt, userPrompt, temperature, maxTokens }) {
+  const url = 'https://openrouter.ai/api/v1/chat/completions';
+  const body = {
+    model,
+    temperature,
+    max_tokens: maxTokens,
+    messages: [
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: userPrompt },
+    ],
+  };
+
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${apiKey}`,
+      'HTTP-Referer': 'https://arjun-marketing-os.srksourabh.workers.dev',
+      'X-Title': 'Orzun Marketing OS',
+    },
+    body: JSON.stringify(body),
+  });
+
+  if (!res.ok) {
+    const errBody = await res.text();
+    throw new Error(`OpenRouter error ${res.status}: ${errBody.slice(0, 300)}`);
+  }
+
+  const data = await res.json();
+  return {
+    text: data.choices?.[0]?.message?.content ?? '',
+    usage: {
+      inputTokens: data.usage?.prompt_tokens ?? 0,
+      outputTokens: data.usage?.completion_tokens ?? 0,
     },
   };
 }

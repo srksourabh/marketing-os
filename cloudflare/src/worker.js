@@ -2,7 +2,7 @@ import { DELIVERABLE_OPTIONS, OPTION_INDEX } from './config.js';
 import { buildExperience, enrichDeliverableOption } from './experience.js';
 import { json } from './utils.js';
 import { runDAG } from './orchestrator.js';
-import { inferLLMProvider, defaultModel } from './llm-client.js';
+import { inferLLMProvider, defaultModel, defaultFastModel } from './llm-client.js';
 
 export default {
   async fetch(request, env) {
@@ -54,7 +54,7 @@ export default {
 
         const llmKey = (byok.llm_key || '').trim();
         if (!llmKey) {
-          return json({ detail: 'An LLM API key is required for AI-powered mode. Paste your Anthropic, OpenAI, or Gemini key.' }, 400);
+          return json({ detail: 'An LLM API key is required. Paste your Anthropic, OpenAI, Gemini, or OpenRouter key.' }, 400);
         }
 
         const provider = byok.llm_provider || inferLLMProvider(llmKey);
@@ -63,7 +63,7 @@ export default {
         }
 
         const reasoningModel = byok.reasoning_model || defaultModel(provider);
-        const fastModel = byok.fast_model || (provider === 'anthropic' ? 'claude-haiku-4-20250414' : provider === 'openai' ? 'gpt-4o-mini' : 'gemini-2.0-flash');
+        const fastModel = byok.fast_model || defaultFastModel(provider);
 
         const selectedNodes = Array.isArray(selected_nodes) && selected_nodes.length > 0
           ? selected_nodes
