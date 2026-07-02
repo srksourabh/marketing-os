@@ -518,14 +518,86 @@
     }
 
     const NODE_PROMPTS_META = {
-      product_summary:{layer:1}, brand_context:{layer:1}, brand_voice:{layer:1}, icp:{layer:1},
-      market_research:{layer:2}, customer_insights:{layer:2}, competitor_intel:{layer:2},
-      gtm_strategy:{layer:3}, channel_priorities:{layer:3}, campaign_plan:{layer:3}, analytics_plan:{layer:3},
-      seo_brief:{layer:4}, blog_briefs:{layer:4}, social_posts:{layer:4}, email_sequence:{layer:4},
-      landing_page_copy:{layer:4}, cro_recommendations:{layer:4},
-      social_posting_plan:{layer:5}, content_backlog:{layer:5}, execution_backlog:{layer:5},
-      draft_queue:{layer:5}, cron_manifest:{layer:5}, content_gen_prompt:{layer:5},
+      product_summary:{layer:1,fmt:'json'}, brand_context:{layer:1,fmt:'json'}, brand_voice:{layer:1,fmt:'json'}, icp:{layer:1,fmt:'json'},
+      market_research:{layer:2,fmt:'md'}, customer_insights:{layer:2,fmt:'json'}, competitor_intel:{layer:2,fmt:'md'},
+      gtm_strategy:{layer:3,fmt:'md'}, channel_priorities:{layer:3,fmt:'json'}, campaign_plan:{layer:3,fmt:'md'}, analytics_plan:{layer:3,fmt:'json'},
+      seo_brief:{layer:4,fmt:'json'}, blog_briefs:{layer:4,fmt:'json'}, social_posts:{layer:4,fmt:'json'}, email_sequence:{layer:4,fmt:'json'},
+      landing_page_copy:{layer:4,fmt:'md'}, cro_recommendations:{layer:4,fmt:'json'},
+      social_posting_plan:{layer:5,fmt:'json'}, content_backlog:{layer:5,fmt:'json'}, execution_backlog:{layer:5,fmt:'json'},
+      draft_queue:{layer:5,fmt:'json'}, cron_manifest:{layer:5,fmt:'json'}, content_gen_prompt:{layer:5,fmt:'text'},
+      logo_generation:{layer:'img',fmt:'image'},
     };
+
+    /** Simple markdown to HTML converter */
+    function mdToHtml(md) {
+      return md
+        .replace(/^#### (.+)$/gm, '<h4>$1</h4>')
+        .replace(/^### (.+)$/gm, '<h3>$1</h3>')
+        .replace(/^## (.+)$/gm, '<h2 style="margin-top:1.2em;color:#cddafe">$1</h2>')
+        .replace(/^# (.+)$/gm, '<h1 style="margin-top:1.2em;color:#eef4ff">$1</h1>')
+        .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+        .replace(/\*(.+?)\*/g, '<em>$1</em>')
+        .replace(/^- (.+)$/gm, '<li>$1</li>')
+        .replace(/(<li>.*<\/li>)/s, '<ul>$1</ul>')
+        .replace(/\n{2,}/g, '</p><p>')
+        .replace(/^(?!<[hul])/gm, '')
+        .replace(/\n/g, '<br/>');
+    }
+
+    /** Render JSON as formatted readable cards */
+    function jsonToCards(parsed, nodeId) {
+      if (Array.isArray(parsed)) {
+        return parsed.map((item, i) => {
+          if (typeof item === 'object') {
+            return `<div style="border:1px solid rgba(148,163,184,0.12);border-radius:14px;padding:14px;margin-bottom:10px;background:rgba(7,14,28,0.6)">
+              <div style="font-size:12px;color:#98b5ff;text-transform:uppercase;margin-bottom:6px">${nodeId} #${i+1}</div>
+              ${Object.entries(item).map(([k,v]) => `<div style="margin-bottom:4px"><strong style="color:#cddafe">${k.replace(/_/g,' ')}:</strong> <span style="color:#dce7fb">${Array.isArray(v) ? v.join(', ') : escapeHtml(String(v))}</span></div>`).join('')}
+            </div>`;
+          }
+          return `<div style="padding:4px 0;color:#dce7fb">• ${escapeHtml(String(item))}</div>`;
+        }).join('');
+      }
+      if (typeof parsed === 'object') {
+        return Object.entries(parsed).map(([k, v]) => {
+          const label = k.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+          if (Array.isArray(v)) {
+            if (v.length > 0 && typeof v[0] === 'object') {
+              return `<div style="margin-bottom:12px"><strong style="color:#98b5ff;font-size:13px;text-transform:uppercase">${label}</strong>${v.map((item, i) => `<div style="border:1px solid rgba(148,163,184,0.1);border-radius:12px;padding:10px;margin:6px 0;background:rgba(7,14,28,0.5)">${Object.entries(item).map(([ik,iv]) => `<div><strong style="color:#cddafe;font-size:12px">${ik.replace(/_/g,' ')}:</strong> <span style="color:#dce7fb;font-size:13px">${escapeHtml(String(iv))}</span></div>`).join('')}</div>`).join('')}</div>`;
+            }
+            return `<div style="margin-bottom:10px"><strong style="color:#98b5ff;font-size:13px;text-transform:uppercase">${label}</strong><div style="color:#dce7fb;padding:4px 0">${v.map(item => `<span style="display:inline-block;padding:3px 10px;margin:3px 4px 3px 0;border-radius:999px;background:rgba(122,162,255,0.12);font-size:13px">${escapeHtml(String(item))}</span>`).join('')}</div></div>`;
+          }
+          if (typeof v === 'object' && v !== null) {
+            return `<div style="margin-bottom:10px"><strong style="color:#98b5ff;font-size:13px;text-transform:uppercase">${label}</strong><div style="padding:8px;border-radius:12px;background:rgba(7,14,28,0.5);margin-top:4px">${Object.entries(v).map(([sk,sv]) => `<div><strong style="color:#cddafe;font-size:12px">${sk.replace(/_/g,' ')}:</strong> <span style="color:#dce7fb;font-size:13px">${escapeHtml(String(sv))}</span></div>`).join('')}</div></div>`;
+          }
+          return `<div style="margin-bottom:8px"><strong style="color:#98b5ff;font-size:13px;text-transform:uppercase">${label}</strong><div style="color:#dce7fb;padding:2px 0;font-size:14px;line-height:1.6">${escapeHtml(String(v))}</div></div>`;
+        }).join('');
+      }
+      return `<pre style="white-space:pre-wrap">${escapeHtml(String(parsed))}</pre>`;
+    }
+
+    /** Render logo images */
+    function renderLogoImages(output) {
+      try {
+        const data = JSON.parse(output);
+        let html = '<div style="display:flex;gap:16px;flex-wrap:wrap">';
+        if (data.logo?.base64) {
+          html += `<div style="text-align:center"><div style="font-size:12px;color:#98b5ff;margin-bottom:6px">LOGO MARK</div><img src="data:${data.logo.mimeType};base64,${data.logo.base64}" style="max-width:280px;border-radius:16px;border:1px solid rgba(148,163,184,0.12)" /></div>`;
+        }
+        if (data.icon?.base64) {
+          html += `<div style="text-align:center"><div style="font-size:12px;color:#98b5ff;margin-bottom:6px">APP ICON</div><img src="data:${data.icon.mimeType};base64,${data.icon.base64}" style="max-width:160px;border-radius:16px;border:1px solid rgba(148,163,184,0.12)" /></div>`;
+        }
+        if (!data.logo?.base64 && !data.icon?.base64) {
+          html += '<div style="color:var(--muted)">Image generation completed but no images were returned.</div>';
+        }
+        html += '</div>';
+        if (data.logoPrompt) {
+          html += `<div style="margin-top:12px;font-size:12px;color:var(--muted)"><strong>Prompt used:</strong> ${escapeHtml(data.logoPrompt.slice(0, 200))}...</div>`;
+        }
+        return html;
+      } catch {
+        return `<div style="color:var(--muted)">Logo data could not be rendered.</div>`;
+      }
+    }
 
     function renderAIResults(artifacts) {
       const nodeLabels = {
@@ -538,56 +610,153 @@
         social_posting_plan:'Social Posting Plan', content_backlog:'Content Backlog',
         execution_backlog:'Execution Backlog', draft_queue:'Draft Queue',
         cron_manifest:'Operating Rhythm', content_gen_prompt:'Content Gen Prompt',
+        logo_generation:'Logo Pack',
       };
       const entries = Object.entries(artifacts).filter(([, v]) => v);
       if (!entries.length) return;
 
       results.innerHTML = entries.map(([nodeId, output]) => {
         const label = nodeLabels[nodeId] || nodeId;
-        const layer = NODE_PROMPTS_META[nodeId]?.layer || '?';
+        const meta = NODE_PROMPTS_META[nodeId] || { layer: '?', fmt: 'text' };
         let preview = '';
-        try {
-          const parsed = typeof output === 'string' ? JSON.parse(output) : output;
-          preview = `<pre style="white-space:pre-wrap;max-height:400px;overflow:auto">${escapeHtml(JSON.stringify(parsed, null, 2))}</pre>`;
-        } catch {
-          preview = `<div style="white-space:pre-wrap;max-height:400px;overflow:auto">${escapeHtml(String(output))}</div>`;
+        let downloadButtons = '';
+
+        if (meta.fmt === 'image') {
+          preview = renderLogoImages(output);
+          downloadButtons = `
+            <button class="download-action" type="button" onclick="downloadLogoImage('logo', '${nodeId}')">⬇ Logo PNG</button>
+            <button class="download-action" type="button" onclick="downloadLogoImage('icon', '${nodeId}')">⬇ Icon PNG</button>
+          `;
+        } else {
+          // Try to parse as JSON for rich rendering
+          let parsed = null;
+          try { parsed = JSON.parse(typeof output === 'string' ? output : JSON.stringify(output)); } catch { /* not JSON */ }
+
+          if (parsed && typeof parsed === 'object') {
+            preview = `<div style="max-height:500px;overflow:auto;padding:4px">${jsonToCards(parsed, nodeId)}</div>`;
+          } else if (meta.fmt === 'md') {
+            preview = `<div style="max-height:500px;overflow:auto;line-height:1.7;color:#dce7fb">${mdToHtml(escapeHtml(String(output)))}</div>`;
+          } else {
+            preview = `<div style="white-space:pre-wrap;max-height:500px;overflow:auto;color:#dce7fb;line-height:1.6">${escapeHtml(String(output))}</div>`;
+          }
+
+          // Determine download options based on format
+          const isJson = !!parsed;
+          downloadButtons = `
+            <button class="download-action" type="button" onclick="downloadArtifact('${nodeId}', '${escapeHtml(label)}', 'json')">⬇ JSON</button>
+            <button class="download-action" type="button" onclick="downloadArtifact('${nodeId}', '${escapeHtml(label)}', 'md')">⬇ Markdown</button>
+            <button class="download-action" type="button" onclick="downloadArtifact('${nodeId}', '${escapeHtml(label)}', 'html')">⬇ HTML Report</button>
+            <button class="download-action" type="button" onclick="downloadArtifact('${nodeId}', '${escapeHtml(label)}', 'print')">🖨 Print / PDF</button>
+          `;
         }
+
         return `
           <article class="result-card">
             <div class="result-head">
               <strong>${escapeHtml(label)}</strong>
               <div class="result-meta">
-                <span class="pill">Layer ${layer}</span>
+                <span class="pill">Layer ${meta.layer}</span>
                 <span class="tag">${nodeId}</span>
               </div>
             </div>
             <div class="preview-surface">${preview}</div>
-            <div class="download-row">
-              <button class="download-action" type="button" onclick="downloadArtifact('${nodeId}', '${escapeHtml(label)}')">Download</button>
-            </div>
+            <div class="download-row">${downloadButtons}</div>
           </article>`;
       }).join('');
 
       window._aiArtifacts = artifacts;
     }
 
-    function downloadArtifact(nodeId, label) {
+    /** Convert artifact to markdown for download */
+    function artifactToMd(nodeId, label, output) {
+      let parsed = null;
+      try { parsed = JSON.parse(output); } catch { /* not JSON */ }
+      if (!parsed) return `# ${label}\n\n${output}`;
+      if (Array.isArray(parsed)) {
+        return `# ${label}\n\n${parsed.map((item, i) => {
+          if (typeof item === 'object') return Object.entries(item).map(([k,v]) => `**${k.replace(/_/g,' ')}:** ${Array.isArray(v) ? v.join(', ') : v}`).join('\n');
+          return `- ${item}`;
+        }).join('\n\n---\n\n')}`;
+      }
+      return `# ${label}\n\n${Object.entries(parsed).map(([k, v]) => {
+        const heading = k.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+        if (Array.isArray(v)) {
+          if (v.length > 0 && typeof v[0] === 'object') return `## ${heading}\n\n${v.map((item, i) => Object.entries(item).map(([ik,iv]) => `- **${ik}:** ${iv}`).join('\n')).join('\n\n')}`;
+          return `## ${heading}\n\n${v.map(item => `- ${item}`).join('\n')}`;
+        }
+        if (typeof v === 'object' && v !== null) return `## ${heading}\n\n${Object.entries(v).map(([sk,sv]) => `- **${sk}:** ${sv}`).join('\n')}`;
+        return `## ${heading}\n\n${v}`;
+      }).join('\n\n')}`;
+    }
+
+    /** Generate standalone HTML report */
+    function artifactToHtml(nodeId, label, output) {
+      const md = artifactToMd(nodeId, label, output);
+      return `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${label}</title><style>
+        body{font-family:Inter,system-ui,sans-serif;max-width:800px;margin:40px auto;padding:20px;color:#1a1a2e;line-height:1.7}
+        h1{color:#1a1a2e;border-bottom:3px solid #7aa2ff;padding-bottom:12px}
+        h2{color:#2d3748;margin-top:32px;border-bottom:1px solid #e2e8f0;padding-bottom:8px}
+        strong{color:#2d3748}
+        ul{padding-left:20px}
+        li{margin-bottom:6px}
+        hr{border:none;border-top:1px solid #e2e8f0;margin:24px 0}
+        .pill{display:inline-block;padding:3px 10px;border-radius:999px;background:#eef2ff;color:#4f46e5;font-size:13px;margin:2px 4px 2px 0}
+      </style></head><body>${mdToHtml(escapeHtml(md))}</body></html>`;
+    }
+
+    function downloadArtifact(nodeId, label, format) {
       const output = window._aiArtifacts?.[nodeId];
       if (!output) return;
+
       let content, ext, mime;
-      try {
-        JSON.parse(typeof output === 'string' ? output : JSON.stringify(output));
-        content = typeof output === 'string' ? output : JSON.stringify(output, null, 2);
+      if (format === 'json') {
+        try {
+          const parsed = JSON.parse(output);
+          content = JSON.stringify(parsed, null, 2);
+        } catch { content = output; }
         ext = 'json'; mime = 'application/json';
-      } catch {
-        content = String(output);
+      } else if (format === 'md') {
+        content = artifactToMd(nodeId, label, output);
         ext = 'md'; mime = 'text/markdown';
+      } else if (format === 'html') {
+        content = artifactToHtml(nodeId, label, output);
+        ext = 'html'; mime = 'text/html';
+      } else if (format === 'print') {
+        const html = artifactToHtml(nodeId, label, output);
+        const blob = new Blob([html], { type: 'text/html' });
+        const url = URL.createObjectURL(blob);
+        const win = window.open(url, '_blank');
+        if (win) win.addEventListener('load', () => { try { win.focus(); win.print(); } catch {} }, { once: true });
+        setTimeout(() => URL.revokeObjectURL(url), 5000);
+        return;
+      } else {
+        content = String(output);
+        ext = 'txt'; mime = 'text/plain';
       }
+
       const blob = new Blob([content], { type: mime });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url; a.download = `${nodeId}.${ext}`; a.click();
       setTimeout(() => URL.revokeObjectURL(url), 1000);
+    }
+
+    function downloadLogoImage(type, nodeId) {
+      const output = window._aiArtifacts?.[nodeId];
+      if (!output) return;
+      try {
+        const data = JSON.parse(output);
+        const img = data[type];
+        if (!img?.base64) { alert(`No ${type} image available`); return; }
+        const binary = atob(img.base64);
+        const bytes = new Uint8Array(binary.length);
+        for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+        const blob = new Blob([bytes], { type: img.mimeType || 'image/png' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url; a.download = `${type}_logo.png`; a.click();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+      } catch { alert('Could not download image'); }
     }
 
     function renderBrandSnapshot(snapshot) {

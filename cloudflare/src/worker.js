@@ -3,6 +3,7 @@ import { buildExperience, enrichDeliverableOption } from './experience.js';
 import { json } from './utils.js';
 import { runDAG } from './orchestrator.js';
 import { inferLLMProvider, defaultModel, defaultFastModel } from './llm-client.js';
+import { inferProviderFromKey } from './assets.js';
 
 export default {
   async fetch(request, env) {
@@ -71,6 +72,11 @@ export default {
 
         const llmConfig = { provider, apiKey: llmKey, reasoningModel, fastModel };
 
+        // Image generation config (optional)
+        const imgKey = (byok.image_key || '').trim();
+        const imgProvider = byok.image_provider || inferProviderFromKey(imgKey);
+        const imageConfig = imgKey ? { apiKey: imgKey, provider: imgProvider || 'gemini' } : null;
+
         const encoder = new TextEncoder();
         const { readable, writable } = new TransformStream();
         const writer = writable.getWriter();
@@ -87,6 +93,7 @@ export default {
               productName: name.trim(),
               productDescription: description.trim(),
               llmConfig,
+              imageConfig,
               constraints: payload.constraints || '',
               knownCompetitors: payload.known_competitors || '',
               vocRaw: payload.voc_raw || '',

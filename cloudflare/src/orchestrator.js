@@ -5,6 +5,7 @@
 
 import { GLOBAL_SYSTEM_BLOCK, NODE_PROMPTS, DAG } from './node-prompts.js';
 import { callLLM, inferLLMProvider, defaultModel } from './llm-client.js';
+import { generateGeminiImage, generateOpenAiImage, inferProviderFromKey, normalizeProvider, buildLogoSvg, buildIconSvg } from './assets.js';
 
 /* Max output tokens by layer — generous to avoid truncation */
 const MAX_TOKENS_BY_LAYER = { 1: 4096, 2: 8192, 3: 8192, 4: 8192, 5: 4096 };
@@ -238,6 +239,7 @@ export async function* runDAG({
   productName,
   productDescription,
   llmConfig,
+  imageConfig,
   constraints,
   knownCompetitors,
   vocRaw,
@@ -246,6 +248,7 @@ export async function* runDAG({
 }) {
   const sortedNodes = resolveAndSort(selectedNodes);
   const artifacts = {};
+  let logoGenerated = false;
 
   for (const nodeId of sortedNodes) {
     const nodeMeta = NODE_PROMPTS[nodeId];
@@ -335,6 +338,50 @@ export async function* runDAG({
     // 6. Store artifact & yield completion
     artifacts[nodeId] = output;
     yield { type: 'node_complete', nodeId, label, output };
+
+    // 6b. After brand_context completes, generate logo if image key is available
+    if (nodeId === 'brand_context' && imageConfig?.apiKey && !logoGenerated) {
+      logoGenerated = true;
+      yield { type: 'node_start', nodeId: 'logo_generation', label: 'Logo Generation', layer: 'img' };
+
+      try {
+        // Parse brand context for logo prompt inputs
+        let brandData = {};
+        try { brandData = JSON.parse(artifacts.brand_context); } catch { /* skip */ }
+        let productData = {};
+        try { productData = JSON.parse(artifacts.product_summary); } catch { /* skip */ }
+
+        const brandName = productName;
+        const positioning = brandData.positioning_statement || brandData.brand_promise || productDescription;
+        const category = productData.category || '';
+
+        // Build logo prompt
+        const logoPrompt = `Create a premium logo concept for "${brandName}". Symbol only, no words, no letters, no typography, no text. Style: dark-luxury minimalism, geometric mark, high contrast. Category: ${category}. Brand positioning: ${positioning}. Clean isolated design on dark background.`;
+        const iconPrompt = `Create a minimal app icon / favicon for "${brandName}". Abstract geometric symbol, no text, no letters. Single clean shape. Bold and recognizable at 64x64px. Dark luxury style.`;
+
+        const generator = imageConfig.provider === 'openai'
+          ? (p) => generateOpenAiImage(imageConfig.apiKey, p)
+          : (p) => generateGeminiImage(imageConfig.apiKey, p);
+
+        const results = await Promise.allSettled([
+          generator(logoPrompt),
+          generator(iconPrompt),
+        ]);
+
+        const logoImages = {
+          logo: results[0].status === 'fulfilled' ? results[0].value : null,
+          icon: results[1].status === 'fulfilled' ? results[1].value : null,
+          logoPrompt,
+          iconPrompt,
+          provider: imageConfig.provider,
+        };
+
+        artifacts.logo_generation = JSON.stringify(logoImages);
+        yield { type: 'node_complete', nodeId: 'logo_generation', label: 'Logo Generation', output: JSON.stringify({ status: 'ok', provider: imageConfig.provider, logo: !!logoImages.logo, icon: !!logoImages.icon }) };
+      } catch (err) {
+        yield { type: 'node_error', nodeId: 'logo_generation', error: err.message || 'Logo generation failed' };
+      }
+    }
   }
 
   // 7. All nodes done
