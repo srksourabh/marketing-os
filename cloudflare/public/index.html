@@ -86,6 +86,19 @@
     .brand-snapshot { display: grid; gap: 8px; padding: 14px; border-radius: 18px; background: rgba(7, 14, 28, 0.82); border: 1px solid rgba(148, 163, 184, 0.12); }
     .swatches { display: flex; gap: 8px; flex-wrap: wrap; }
     .swatch { width: 28px; height: 28px; border-radius: 999px; border: 2px solid rgba(255,255,255,0.2); }
+    .progress-log { display: grid; gap: 6px; padding: 14px; border-radius: 18px; background: rgba(7, 14, 28, 0.82); border: 1px solid rgba(148, 163, 184, 0.12); max-height: 320px; overflow: auto; }
+    .progress-item { display: flex; align-items: center; gap: 10px; font-size: 13px; padding: 6px 0; }
+    .progress-item .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+    .progress-item .dot.running { background: var(--accent); animation: pulse 1.2s infinite; }
+    .progress-item .dot.done { background: var(--accent-2); }
+    .progress-item .dot.error { background: #f87171; }
+    @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.3; } }
+    .mode-tabs { display: flex; gap: 0; border-radius: 12px; overflow: hidden; border: 1px solid var(--border); }
+    .mode-tab { flex: 1; padding: 10px 16px; font: inherit; font-size: 13px; font-weight: 600; border: 0; cursor: pointer; text-align: center; transition: background .15s, color .15s; }
+    .mode-tab.active { background: rgba(122, 162, 255, 0.18); color: var(--accent); }
+    .mode-tab:not(.active) { background: transparent; color: var(--muted); }
+    .mode-section { display: none; }
+    .mode-section.active { display: grid; gap: 18px; }
     @media (max-width: 1050px) { .hero, .grid { grid-template-columns: 1fr; } }
     @media (max-width: 820px) { .checks { grid-template-columns: 1fr; max-height: none; } .byok-grid { grid-template-columns: 1fr; } }
   </style>
@@ -124,20 +137,51 @@
             <textarea id="description" name="description" placeholder="CRM and automation software for small clinics to capture leads, send reminders, reduce no-shows, and grow patient bookings." required></textarea>
           </div>
           <div class="field">
-            <div class="toolbar">
-              <label for="byok-provider">Bring your own image key</label>
-              <div class="tiny">Optional. If blank, the demo uses any server key available or falls back to prompt-only outputs.</div>
+            <div class="mode-tabs">
+              <button type="button" class="mode-tab" data-mode="ai" id="tab-ai">🤖 AI-powered (BYOK)</button>
+              <button type="button" class="mode-tab active" data-mode="instant" id="tab-instant">⚡ Instant (deterministic)</button>
             </div>
-            <div class="byok-grid">
-              <select id="byok-provider" name="byok_provider" aria-label="Image provider">
-                <option value="">Auto-detect from key</option>
-                <option value="gemini">Gemini</option>
-                <option value="openai">OpenAI</option>
-              </select>
-              <input id="byok-api-key" name="byok_api_key" type="password" placeholder="Paste your Gemini or OpenAI image key" autocomplete="off" spellcheck="false" />
-            </div>
-            <div class="hint">BYOK mode sends the key only with this request over HTTPS. The app does not save it in the browser or on the Worker.</div>
           </div>
+
+          <!-- AI mode fields -->
+          <div id="ai-section" class="mode-section">
+            <div class="field">
+              <div class="toolbar">
+                <label for="llm-provider">LLM provider for strategy generation</label>
+                <div class="tiny">Paste your own LLM key. Each full run costs ~$1.50–3.00 on your key.</div>
+              </div>
+              <div class="byok-grid">
+                <select id="llm-provider" name="llm_provider" aria-label="LLM provider">
+                  <option value="">Auto-detect from key</option>
+                  <option value="anthropic">Anthropic (Claude)</option>
+                  <option value="openai">OpenAI (GPT-4o)</option>
+                  <option value="gemini">Google (Gemini)</option>
+                </select>
+                <input id="llm-api-key" name="llm_api_key" type="password" placeholder="Paste your Anthropic, OpenAI, or Gemini API key" autocomplete="off" spellcheck="false" />
+              </div>
+              <div class="hint">Your key is sent per-request only over HTTPS. Never stored.</div>
+            </div>
+          </div>
+
+          <!-- Instant mode fields -->
+          <div id="instant-section" class="mode-section active">
+            <div class="field">
+              <div class="toolbar">
+                <label for="byok-provider">Bring your own image key</label>
+                <div class="tiny">Optional. If blank, the demo uses any server key available or falls back to prompt-only outputs.</div>
+              </div>
+              <div class="byok-grid">
+                <select id="byok-provider" name="byok_provider" aria-label="Image provider">
+                  <option value="">Auto-detect from key</option>
+                  <option value="gemini">Gemini</option>
+                  <option value="openai">OpenAI</option>
+                </select>
+                <input id="byok-api-key" name="byok_api_key" type="password" placeholder="Paste your Gemini or OpenAI image key" autocomplete="off" spellcheck="false" />
+              </div>
+              <div class="hint">BYOK mode sends the key only with this request over HTTPS. The app does not save it in the browser or on the Worker.</div>
+            </div>
+          </div>
+
           <div class="field">
             <div class="toolbar">
               <label>Select the outputs you want</label>
@@ -191,6 +235,10 @@
           <div id="provider-mode" class="tiny"></div>
           <div id="provider-note" class="tiny"></div>
         </div>
+        <div id="progress-panel" class="brand-snapshot" hidden>
+          <strong>DAG execution progress</strong>
+          <div id="progress-log" class="progress-log"></div>
+        </div>
       </aside>
     </section>
 
@@ -216,12 +264,26 @@
     const providerRuntime = document.getElementById('provider-runtime');
     const providerMode = document.getElementById('provider-mode');
     const providerNote = document.getElementById('provider-note');
+    const progressPanel = document.getElementById('progress-panel');
+    const progressLog = document.getElementById('progress-log');
     const workflowStepsNode = document.getElementById('workflow-steps');
     const dependencyMap = {
       brand_identity_suite: ['market_research', 'competitor_intel', 'customer_insights'],
       logo_pack: ['market_research', 'competitor_intel', 'customer_insights', 'brand_identity_suite'],
       social_posts: ['market_research', 'competitor_intel', 'customer_insights', 'brand_identity_suite', 'logo_pack'],
     };
+
+    let currentMode = 'instant';
+
+    // Mode tab switching
+    document.querySelectorAll('.mode-tab').forEach((tab) => {
+      tab.addEventListener('click', () => {
+        currentMode = tab.dataset.mode;
+        document.querySelectorAll('.mode-tab').forEach((t) => t.classList.toggle('active', t === tab));
+        document.getElementById('ai-section').classList.toggle('active', currentMode === 'ai');
+        document.getElementById('instant-section').classList.toggle('active', currentMode === 'instant');
+      });
+    });
 
     async function loadDeliverables() {
       const response = await fetch('/deliverables');
@@ -269,36 +331,52 @@
       document.querySelectorAll('input[name="selected_items"]').forEach((node) => { node.checked = false; });
     });
 
-    form.addEventListener('submit', async (event) => {
-      event.preventDefault();
-      const payload = {
-        name: document.getElementById('name').value.trim(),
-        description: document.getElementById('description').value.trim(),
-        selected_items: checkedValues(),
-        byok: {
-          provider: document.getElementById('byok-provider').value,
-          api_key: document.getElementById('byok-api-key').value.trim(),
-        },
-      };
-
+    function resetUI() {
       results.innerHTML = '';
       productDirNode.textContent = '';
       statusNode.className = 'status';
       brandSnapshot.hidden = true;
       providerRuntime.hidden = true;
+      progressPanel.hidden = true;
+      progressLog.innerHTML = '';
+    }
 
-      if (!payload.name || !payload.description) {
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      resetUI();
+
+      const name = document.getElementById('name').value.trim();
+      const description = document.getElementById('description').value.trim();
+      const selectedItems = checkedValues();
+
+      if (!name || !description) {
         statusNode.textContent = 'Add product name and description.';
         statusNode.classList.add('error');
         return;
       }
-      if (payload.selected_items.length === 0) {
+      if (selectedItems.length === 0) {
         statusNode.textContent = 'Select at least one deliverable.';
         statusNode.classList.add('error');
         return;
       }
 
-      statusNode.textContent = 'Running Orzun...';
+      if (currentMode === 'ai') {
+        await runAIMode(name, description, selectedItems);
+      } else {
+        await runInstantMode(name, description, selectedItems);
+      }
+    });
+
+    // ===== INSTANT (deterministic) mode =====
+    async function runInstantMode(name, description, selectedItems) {
+      const payload = {
+        name, description, selected_items: selectedItems,
+        byok: {
+          provider: document.getElementById('byok-provider').value,
+          api_key: document.getElementById('byok-api-key').value.trim(),
+        },
+      };
+      statusNode.textContent = 'Running Orzun (instant mode)...';
       try {
         const response = await fetch('/experience', {
           method: 'POST',
@@ -309,51 +387,223 @@
         if (!response.ok) throw new Error(data.detail || 'Request failed');
 
         statusNode.textContent = data.auto_added_dependencies?.length
-          ? `Done. ${data.selected_outputs.length} output(s) ready. Auto-added earlier workflow steps: ${data.auto_added_dependencies.map((id) => data.generation_flow.find((step) => step.id === id)?.label || id).join(', ')}.`
+          ? `Done. ${data.selected_outputs.length} output(s) ready. Auto-added: ${data.auto_added_dependencies.map((id) => data.generation_flow.find((step) => step.id === id)?.label || id).join(', ')}.`
           : `Done. ${data.selected_outputs.length} output(s) ready.`;
         statusNode.classList.add('success');
         productDirNode.textContent = `Workspace: ${data.product_dir}`;
         renderBrandSnapshot(data.brand_snapshot);
         renderImageRuntime(data.image_provider);
-        results.innerHTML = data.selected_outputs.map((item, idx) => `
-          <article class="result-card">
-            <div class="result-head">
-              <strong>${item.label}</strong>
-              <div class="result-meta">
-                <span class="pill">${item.category}</span>
-                <span class="tag">${item.format}</span>
-              </div>
-            </div>
-            <div class="preview-surface">${item.preview_html || `<pre>${escapeHtml(item.preview || '')}</pre>`}</div>
-            <div class="hint">${item.preview || ''}</div>
-            <div class="download-row">
-              ${item.downloads.map((download, downloadIndex) => `<button class="download-action" type="button" data-result-index="${idx}" data-download-index="${downloadIndex}">${download.label}</button>`).join('')}
-            </div>
-          </article>
-        `).join('');
-
-        results.querySelectorAll('.download-action').forEach((button) => {
-          button.addEventListener('click', () => {
-            const item = data.selected_outputs[Number(button.dataset.resultIndex)];
-            const download = item.downloads[Number(button.dataset.downloadIndex)];
-            if (download.action === 'print') {
-              openPrintView(download.base64, download.mime_type);
-              return;
-            }
-            const blob = base64ToBlob(download.base64, download.mime_type);
-            const url = URL.createObjectURL(blob);
-            const anchor = document.createElement('a');
-            anchor.href = url;
-            anchor.download = download.filename;
-            anchor.click();
-            setTimeout(() => URL.revokeObjectURL(url), 1000);
-          });
-        });
+        renderInstantResults(data);
       } catch (error) {
         statusNode.textContent = error.message || 'Something failed.';
         statusNode.classList.add('error');
       }
-    });
+    }
+
+    function renderInstantResults(data) {
+      results.innerHTML = data.selected_outputs.map((item, idx) => `
+        <article class="result-card">
+          <div class="result-head">
+            <strong>${item.label}</strong>
+            <div class="result-meta">
+              <span class="pill">${item.category}</span>
+              <span class="tag">${item.format}</span>
+            </div>
+          </div>
+          <div class="preview-surface">${item.preview_html || `<pre>${escapeHtml(item.preview || '')}</pre>`}</div>
+          <div class="hint">${item.preview || ''}</div>
+          <div class="download-row">
+            ${item.downloads.map((download, downloadIndex) => `<button class="download-action" type="button" data-result-index="${idx}" data-download-index="${downloadIndex}">${download.label}</button>`).join('')}
+          </div>
+        </article>
+      `).join('');
+
+      results.querySelectorAll('.download-action').forEach((button) => {
+        button.addEventListener('click', () => {
+          const item = data.selected_outputs[Number(button.dataset.resultIndex)];
+          const download = item.downloads[Number(button.dataset.downloadIndex)];
+          if (download.action === 'print') { openPrintView(download.base64, download.mime_type); return; }
+          const blob = base64ToBlob(download.base64, download.mime_type);
+          const url = URL.createObjectURL(blob);
+          const anchor = document.createElement('a');
+          anchor.href = url; anchor.download = download.filename; anchor.click();
+          setTimeout(() => URL.revokeObjectURL(url), 1000);
+        });
+      });
+    }
+
+    // ===== AI (BYOK LLM) mode =====
+    async function runAIMode(name, description, selectedItems) {
+      const llmKey = document.getElementById('llm-api-key').value.trim();
+      if (!llmKey) {
+        statusNode.textContent = 'Paste an LLM API key (Anthropic, OpenAI, or Gemini) to use AI-powered mode.';
+        statusNode.classList.add('error');
+        return;
+      }
+      const llmProvider = document.getElementById('llm-provider').value || undefined;
+
+      progressPanel.hidden = false;
+      statusNode.textContent = 'Starting AI-powered generation...';
+
+      const payload = {
+        name, description,
+        selected_nodes: selectedItems,
+        byok: { llm_key: llmKey, llm_provider: llmProvider },
+      };
+
+      let completedNodes = 0;
+      let totalNodes = 0;
+
+      try {
+        const response = await fetch('/run', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+
+        if (!response.ok) {
+          const err = await response.json().catch(() => ({ detail: 'Request failed' }));
+          throw new Error(err.detail || `HTTP ${response.status}`);
+        }
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+        let allArtifacts = {};
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+
+          const lines = buffer.split('\n');
+          buffer = lines.pop();
+
+          for (const line of lines) {
+            if (!line.startsWith('data: ')) continue;
+            try {
+              const event = JSON.parse(line.slice(6));
+              handleSSEEvent(event);
+              if (event.type === 'node_start') totalNodes++;
+              if (event.type === 'node_complete') { completedNodes++; allArtifacts[event.nodeId] = event.output; }
+              if (event.type === 'complete') allArtifacts = event.artifacts || allArtifacts;
+              statusNode.textContent = `AI generation: ${completedNodes}/${totalNodes || '?'} nodes complete...`;
+            } catch (e) { /* skip malformed */ }
+          }
+        }
+
+        statusNode.textContent = `Done. ${completedNodes} AI-generated artifact(s) ready.`;
+        statusNode.classList.add('success');
+        renderAIResults(allArtifacts);
+      } catch (error) {
+        statusNode.textContent = error.message || 'AI generation failed.';
+        statusNode.classList.add('error');
+      }
+    }
+
+    function handleSSEEvent(event) {
+      if (event.type === 'node_start') {
+        const el = document.createElement('div');
+        el.className = 'progress-item';
+        el.id = `prog-${event.nodeId}`;
+        el.innerHTML = `<span class="dot running"></span><span>Layer ${event.layer} · <strong>${event.label || event.nodeId}</strong> — running...</span>`;
+        progressLog.appendChild(el);
+        progressLog.scrollTop = progressLog.scrollHeight;
+      }
+      if (event.type === 'node_complete') {
+        const el = document.getElementById(`prog-${event.nodeId}`);
+        if (el) {
+          el.querySelector('.dot').className = 'dot done';
+          el.querySelector('span:last-child').innerHTML = `Layer ${NODE_PROMPTS_META[event.nodeId]?.layer || '?'} · <strong>${event.label || event.nodeId}</strong> — done ✓`;
+        }
+      }
+      if (event.type === 'node_error') {
+        const el = document.getElementById(`prog-${event.nodeId}`);
+        if (el) {
+          el.querySelector('.dot').className = 'dot error';
+          el.querySelector('span:last-child').innerHTML += ` — error: ${escapeHtml(event.error || 'unknown')}`;
+        }
+      }
+      if (event.type === 'fatal_error') {
+        const el = document.createElement('div');
+        el.className = 'progress-item';
+        el.innerHTML = `<span class="dot error"></span><span><strong>Fatal error:</strong> ${escapeHtml(event.error)}</span>`;
+        progressLog.appendChild(el);
+      }
+    }
+
+    const NODE_PROMPTS_META = {
+      product_summary:{layer:1}, brand_context:{layer:1}, brand_voice:{layer:1}, icp:{layer:1},
+      market_research:{layer:2}, customer_insights:{layer:2}, competitor_intel:{layer:2},
+      gtm_strategy:{layer:3}, channel_priorities:{layer:3}, campaign_plan:{layer:3}, analytics_plan:{layer:3},
+      seo_brief:{layer:4}, blog_briefs:{layer:4}, social_posts:{layer:4}, email_sequence:{layer:4},
+      landing_page_copy:{layer:4}, cro_recommendations:{layer:4},
+      social_posting_plan:{layer:5}, content_backlog:{layer:5}, execution_backlog:{layer:5},
+      draft_queue:{layer:5}, cron_manifest:{layer:5}, content_gen_prompt:{layer:5},
+    };
+
+    function renderAIResults(artifacts) {
+      const nodeLabels = {
+        product_summary:'Product Summary', brand_context:'Brand Context', brand_voice:'Brand Voice',
+        icp:'Ideal Customer Profile', market_research:'Market Research', customer_insights:'Customer Insights',
+        competitor_intel:'Competitor Intelligence', gtm_strategy:'GTM Strategy', channel_priorities:'Channel Priorities',
+        campaign_plan:'Campaign Plan', analytics_plan:'Analytics Plan', seo_brief:'SEO Brief',
+        blog_briefs:'Blog Briefs', social_posts:'Social Content', email_sequence:'Email Sequence',
+        landing_page_copy:'Landing Page Copy', cro_recommendations:'CRO Recommendations',
+        social_posting_plan:'Social Posting Plan', content_backlog:'Content Backlog',
+        execution_backlog:'Execution Backlog', draft_queue:'Draft Queue',
+        cron_manifest:'Operating Rhythm', content_gen_prompt:'Content Gen Prompt',
+      };
+      const entries = Object.entries(artifacts).filter(([, v]) => v);
+      if (!entries.length) return;
+
+      results.innerHTML = entries.map(([nodeId, output]) => {
+        const label = nodeLabels[nodeId] || nodeId;
+        const layer = NODE_PROMPTS_META[nodeId]?.layer || '?';
+        let preview = '';
+        try {
+          const parsed = typeof output === 'string' ? JSON.parse(output) : output;
+          preview = `<pre style="white-space:pre-wrap;max-height:400px;overflow:auto">${escapeHtml(JSON.stringify(parsed, null, 2))}</pre>`;
+        } catch {
+          preview = `<div style="white-space:pre-wrap;max-height:400px;overflow:auto">${escapeHtml(String(output))}</div>`;
+        }
+        return `
+          <article class="result-card">
+            <div class="result-head">
+              <strong>${escapeHtml(label)}</strong>
+              <div class="result-meta">
+                <span class="pill">Layer ${layer}</span>
+                <span class="tag">${nodeId}</span>
+              </div>
+            </div>
+            <div class="preview-surface">${preview}</div>
+            <div class="download-row">
+              <button class="download-action" type="button" onclick="downloadArtifact('${nodeId}', '${escapeHtml(label)}')">Download</button>
+            </div>
+          </article>`;
+      }).join('');
+
+      window._aiArtifacts = artifacts;
+    }
+
+    function downloadArtifact(nodeId, label) {
+      const output = window._aiArtifacts?.[nodeId];
+      if (!output) return;
+      let content, ext, mime;
+      try {
+        JSON.parse(typeof output === 'string' ? output : JSON.stringify(output));
+        content = typeof output === 'string' ? output : JSON.stringify(output, null, 2);
+        ext = 'json'; mime = 'application/json';
+      } catch {
+        content = String(output);
+        ext = 'md'; mime = 'text/markdown';
+      }
+      const blob = new Blob([content], { type: mime });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = `${nodeId}.${ext}`; a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    }
 
     function renderBrandSnapshot(snapshot) {
       if (!snapshot) return;
@@ -366,11 +616,7 @@
     function renderImageRuntime(provider) {
       if (!provider) return;
       providerRuntime.hidden = false;
-      const sourceLabel = provider.source === 'byok'
-        ? 'BYOK request key'
-        : provider.source === 'server'
-          ? 'server demo key'
-          : 'prompt-only fallback';
+      const sourceLabel = provider.source === 'byok' ? 'BYOK request key' : provider.source === 'server' ? 'server demo key' : 'prompt-only fallback';
       providerMode.textContent = `Provider: ${provider.label} · Source: ${sourceLabel}`;
       providerNote.textContent = provider.ready
         ? 'Image-backed logo and social variants can be generated in this run.'
@@ -381,11 +627,7 @@
       const blob = base64ToBlob(base64, mimeType);
       const url = URL.createObjectURL(blob);
       const win = window.open(url, '_blank');
-      if (win) {
-        win.addEventListener('load', () => {
-          try { win.focus(); win.print(); } catch (error) { /* ignore */ }
-        }, { once: true });
-      }
+      if (win) { win.addEventListener('load', () => { try { win.focus(); win.print(); } catch (error) {} }, { once: true }); }
     }
 
     function base64ToBlob(base64, mimeType) {
@@ -396,12 +638,7 @@
     }
 
     function escapeHtml(text) {
-      return String(text)
-        .replaceAll('&', '&amp;')
-        .replaceAll('<', '&lt;')
-        .replaceAll('>', '&gt;')
-        .replaceAll('"', '&quot;')
-        .replaceAll("'", '&#039;');
+      return String(text).replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#039;');
     }
 
     loadDeliverables();
