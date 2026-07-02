@@ -1,0 +1,26 @@
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+
+# Node / Cloudflare
+node_modules/
+cloudflare/.wrangler/
+
+# OS / editor
+.DS_Store
+.vscode/
+.idea/
+
+# Secrets / env
+.env
+*.env
+.env.*
+
+# Generated artifacts
+*.log
+coverage/
+dist/
+build/
+demo_workspace/

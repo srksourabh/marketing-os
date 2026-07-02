@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Arjun Marketing Demo</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #0b1020;
+      --panel: rgba(17, 24, 39, 0.88);
+      --panel-2: rgba(30, 41, 59, 0.72);
+      --border: rgba(148, 163, 184, 0.18);
+      --text: #e5eefc;
+      --muted: #96a3b8;
+      --accent: #7c9cff;
+      --accent-2: #34d399;
+      --danger: #fb7185;
+      --shadow: 0 22px 60px rgba(0, 0, 0, 0.35);
+      --radius: 22px;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background:
+        radial-gradient(circle at top left, rgba(124, 156, 255, 0.24), transparent 34%),
+        radial-gradient(circle at top right, rgba(52, 211, 153, 0.12), transparent 22%),
+        linear-gradient(180deg, #070b16 0%, #0b1020 100%);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    .shell {
+      width: min(1180px, calc(100% - 32px));
+      margin: 32px auto 64px;
+      display: grid;
+      gap: 24px;
+    }
+
+    .hero, .panel {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(18px);
+    }
+
+    .hero {
+      padding: 28px;
+      display: grid;
+      gap: 18px;
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      width: fit-content;
+      gap: 10px;
+      align-items: center;
+      padding: 8px 12px;
+      border-radius: 999px;
+      background: rgba(124, 156, 255, 0.14);
+      color: #c8d6ff;
+      font-size: 13px;
+      letter-spacing: 0.02em;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(2rem, 4vw, 3.8rem);
+      line-height: 0.96;
+      max-width: 11ch;
+    }
+
+    .hero p {
+      margin: 0;
+      max-width: 62ch;
+      color: var(--muted);
+      font-size: 1rem;
+      line-height: 1.6;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.15fr) minmax(320px, 0.85fr);
+      gap: 24px;
+    }
+
+    .panel {
+      padding: 24px;
+    }
+
+    form {
+      display: grid;
+      gap: 18px;
+    }
+
+    .field {
+      display: grid;
+      gap: 10px;
+    }
+
+    label {
+      font-size: 14px;
+      color: #d7e2f3;
+      font-weight: 600;
+    }
+
+    input, textarea {
+      width: 100%;
+      border: 1px solid rgba(148, 163, 184, 0.16);
+      background: rgba(15, 23, 42, 0.92);
+      color: var(--text);
+      border-radius: 16px;
+      padding: 14px 16px;
+      font: inherit;
+      outline: none;
+      transition: border-color .18s ease, transform .18s ease;
+    }
+
+    input:focus, textarea:focus {
+      border-color: rgba(124, 156, 255, 0.9);
+      transform: translateY(-1px);
+    }
+
+    textarea { min-height: 124px; resize: vertical; }
+
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .linkish {
+      border: 0;
+      background: transparent;
+      color: #bcd0ff;
+      font: inherit;
+      padding: 0;
+      cursor: pointer;
+    }
+
+    .checks {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+      max-height: 440px;
+      overflow: auto;
+      padding-right: 4px;
+    }
+
+    .check {
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+      border: 1px solid rgba(148, 163, 184, 0.13);
+      background: var(--panel-2);
+      border-radius: 18px;
+      padding: 14px;
+      min-height: 74px;
+    }
+
+    .check input {
+      width: 18px;
+      height: 18px;
+      margin-top: 2px;
+      accent-color: var(--accent);
+    }
+
+    .check span {
+      display: block;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.5;
+      margin-top: 4px;
+    }
+
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: center;
+    }
+
+    button.primary {
+      border: 0;
+      border-radius: 16px;
+      padding: 14px 20px;
+      font: inherit;
+      font-weight: 700;
+      color: white;
+      cursor: pointer;
+      background: linear-gradient(135deg, var(--accent), #5d7dff 55%, #3e57f5);
+      box-shadow: 0 14px 32px rgba(71, 102, 255, 0.35);
+    }
+
+    .hint, .status {
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.6;
+    }
+
+    .status.error { color: #fecdd3; }
+    .status.success { color: #bbf7d0; }
+
+    .results {
+      display: grid;
+      gap: 14px;
+      margin-top: 18px;
+    }
+
+    .result-card {
+      border: 1px solid rgba(148, 163, 184, 0.16);
+      background: rgba(15, 23, 42, 0.85);
+      border-radius: 18px;
+      padding: 16px;
+      display: grid;
+      gap: 10px;
+    }
+
+    .result-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 7px 11px;
+      border-radius: 999px;
+      background: rgba(52, 211, 153, 0.14);
+      color: #bbf7d0;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    pre {
+      margin: 0;
+      padding: 14px;
+      border-radius: 14px;
+      background: rgba(2, 6, 23, 0.95);
+      color: #dbeafe;
+      overflow: auto;
+      white-space: pre-wrap;
+      word-break: break-word;
+      font: 13px/1.6 "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+      max-height: 220px;
+    }
+
+    .side-list {
+      display: grid;
+      gap: 12px;
+      margin-top: 18px;
+    }
+
+    .side-item {
+      border: 1px solid rgba(148, 163, 184, 0.14);
+      border-radius: 16px;
+      padding: 14px 15px;
+      background: rgba(15, 23, 42, 0.72);
+    }
+
+    .side-item strong {
+      display: block;
+      margin-bottom: 5px;
+    }
+
+    .tiny { font-size: 12px; color: var(--muted); }
+
+    @media (max-width: 920px) {
+      .grid { grid-template-columns: 1fr; }
+      .checks { grid-template-columns: 1fr; max-height: none; }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <section class="hero">
+      <div class="eyebrow">Arjun demo experience · marketing OS</div>
+      <h1>Give me my market analysis.</h1>
+      <p>
+        A simple demo page for your friends. Enter a product name, add a short description, select the marketing outputs you want,
+        and Arjun dispatches only those deliverables. You get previews and download links on the same page, including a reusable content generation prompt.
+      </p>
+    </section>
+
+    <section class="grid">
+      <section class="panel">
+        <form id="analysis-form">
+          <div class="field">
+            <label for="name">Product name</label>
+            <input id="name" name="name" type="text" placeholder="Silky" required />
+          </div>
+
+          <div class="field">
+            <label for="description">Description</label>
+            <textarea id="description" name="description" placeholder="Premium vegan silk haircare brand for smoother, softer hair without harsh chemicals." required></textarea>
+          </div>
+
+          <div class="field">
+            <div class="toolbar">
+              <label>Select the outputs you want</label>
+              <div class="actions">
+                <button class="linkish" type="button" id="select-all">Select all</button>
+                <button class="linkish" type="button" id="clear-all">Clear</button>
+              </div>
+            </div>
+            <div id="deliverable-list" class="checks" aria-live="polite"></div>
+          </div>
+
+          <div class="actions">
+            <button class="primary" type="submit">Give me my market analysis</button>
+            <div class="hint">Selected items only. No extra noise.</div>
+          </div>
+          <div id="status" class="status"></div>
+        </form>
+      </section>
+
+      <aside class="panel">
+        <h2 style="margin-top:0">What this can generate</h2>
+        <p class="hint">Useful enough to show off. Practical enough to use.</p>
+        <div class="side-list">
+          <div class="side-item">
+            <strong>Strategy layer</strong>
+            GTM strategy, market research, channel priorities, ICP, competitor intel, analytics plan.
+          </div>
+          <div class="side-item">
+            <strong>Content layer</strong>
+            Social posts, blog briefs, SEO brief, landing page copy, email sequence, content prompt.
+          </div>
+          <div class="side-item">
+            <strong>Ops layer</strong>
+            Draft queue, backlog, posting plan, cron manifest, execution tasks.
+          </div>
+        </div>
+        <p class="tiny" style="margin-top: 18px;">The better the description, the sharper the output. The machine can infer. It cannot read minds.</p>
+      </aside>
+    </section>
+
+    <section class="panel">
+      <div class="toolbar">
+        <h2 style="margin:0">Generated outputs</h2>
+        <div id="product-dir" class="tiny"></div>
+      </div>
+      <div id="results" class="results"></div>
+    </section>
+  </main>
+
+  <script>
+    const deliverableList = document.getElementById('deliverable-list');
+    const form = document.getElementById('analysis-form');
+    const results = document.getElementById('results');
+    const statusNode = document.getElementById('status');
+    const productDirNode = document.getElementById('product-dir');
+
+    async function loadDeliverables() {
+      const response = await fetch('/deliverables');
+      const data = await response.json();
+      deliverableList.innerHTML = data.items.map((item) => `
+        <label class="check">
+          <input type="checkbox" name="selected_items" value="${item.id}" checked />
+          <div>
+            <strong>${item.label}</strong>
+            <span>Dispatch this output only.</span>
+          </div>
+        </label>
+      `).join('');
+    }
+
+    function checkedValues() {
+      return Array.from(document.querySelectorAll('input[name="selected_items"]:checked')).map((node) => node.value);
+    }
+
+    document.getElementById('select-all').addEventListener('click', () => {
+      document.querySelectorAll('input[name="selected_items"]').forEach((node) => { node.checked = true; });
+    });
+
+    document.getElementById('clear-all').addEventListener('click', () => {
+      document.querySelectorAll('input[name="selected_items"]').forEach((node) => { node.checked = false; });
+    });
+
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const payload = {
+        name: document.getElementById('name').value.trim(),
+        description: document.getElementById('description').value.trim(),
+        selected_items: checkedValues(),
+      };
+
+      results.innerHTML = '';
+      productDirNode.textContent = '';
+      statusNode.className = 'status';
+
+      if (!payload.name || !payload.description) {
+        statusNode.textContent = 'Add product name and description.';
+        statusNode.classList.add('error');
+        return;
+      }
+      if (payload.selected_items.length === 0) {
+        statusNode.textContent = 'Select at least one deliverable.';
+        statusNode.classList.add('error');
+        return;
+      }
+
+      statusNode.textContent = 'Running Arjun...';
+      try {
+        const response = await fetch('/experience', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        const data = await response.json();
+        if (!response.ok) {
+          throw new Error(data.detail || 'Request failed');
+        }
+        statusNode.textContent = `Done. ${data.selected_outputs.length} output(s) ready.`;
+        statusNode.classList.add('success');
+        productDirNode.textContent = `Workspace: ${data.product_dir}`;
+        results.innerHTML = data.selected_outputs.map((item) => `
+          <article class="result-card">
+            <div class="result-head">
+              <strong>${item.label}</strong>
+              <span class="tag">${item.format}</span>
+            </div>
+            <pre>${escapeHtml(item.preview)}</pre>
+            <div class="actions">
+              <a class="linkish" href="${item.download_url}" download>Download ${item.label}</a>
+            </div>
+          </article>
+        `).join('');
+      } catch (error) {
+        statusNode.textContent = error.message || 'Something failed.';
+        statusNode.classList.add('error');
+      }
+    });
+
+    function escapeHtml(text) {
+      return text
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#039;');
+    }
+
+    loadDeliverables();
+  </script>
+</body>
+</html>

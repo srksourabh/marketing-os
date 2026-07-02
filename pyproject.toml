@@ -1,0 +1,13 @@
+[project]
+name = "marketing-os"
+version = "0.1.0"
+description = "Chief marketing officer + specialist agent swarm operating system"
+requires-python = ">=3.13"
+dependencies = [
+  "fastapi>=0.116.1",
+  "httpx>=0.28.1",
+]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
