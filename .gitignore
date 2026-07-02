@@ -6,6 +6,7 @@ __pycache__/
 
 # Node / Cloudflare
 node_modules/
+.playwright-browsers/
 cloudflare/.wrangler/
 
 # OS / editor
@@ -24,3 +25,7 @@ coverage/
 dist/
 build/
 demo_workspace/
+
+# Runtime caches
+.pytest_cache/
+cloudflare/.wrangler/

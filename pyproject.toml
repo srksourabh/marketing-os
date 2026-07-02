@@ -1,12 +1,22 @@
 [project]
 name = "marketing-os"
 version = "0.1.0"
-description = "Chief marketing officer + specialist agent swarm operating system"
+description = "CEO-grade marketing operating system with Cloudflare Worker delivery and a FastAPI test harness"
 requires-python = ">=3.13"
 dependencies = [
   "fastapi>=0.116.1",
   "httpx>=0.28.1",
+  "uvicorn[standard]>=0.35.0",
 ]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.4.1",
+]
+
+[project.urls]
+Homepage = "https://arjun-marketing-os.srksourabh.workers.dev"
+Repository = "https://github.com/srksourabh/marketing-os"
 
 [tool.pytest.ini_options]
 pythonpath = ["."]
