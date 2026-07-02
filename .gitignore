@@ -29,3 +29,4 @@ demo_workspace/
 # Runtime caches
 .pytest_cache/
 cloudflare/.wrangler/
+.github/workflows/
