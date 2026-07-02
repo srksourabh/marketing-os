@@ -6,6 +6,9 @@
 import { GLOBAL_SYSTEM_BLOCK, NODE_PROMPTS, DAG } from './node-prompts.js';
 import { callLLM, inferLLMProvider, defaultModel } from './llm-client.js';
 
+/* Max output tokens by layer — research/strategy nodes need room */
+const MAX_TOKENS_BY_LAYER = { 1: 2048, 2: 4096, 3: 4096, 4: 4096, 5: 2048 };
+
 /* ------------------------------------------------------------------ */
 /*  Dependency resolution & topological sort                          */
 /* ------------------------------------------------------------------ */
@@ -121,8 +124,17 @@ function injectVariables(template, varMap) {
 }
 
 /* ------------------------------------------------------------------ */
-/*  Output validation                                                 */
+/*  Output cleanup & validation                                       */
 /* ------------------------------------------------------------------ */
+
+/** Strip markdown code fences that LLMs love to add */
+function stripCodeFences(text) {
+  if (!text) return text;
+  // Match ```json ... ``` or ``` ... ``` or ```markdown ... ```
+  const fenced = text.match(/^```(?:\w+)?\s*\n([\s\S]*?)```\s*$/);
+  if (fenced) return fenced[1].trim();
+  return text.trim();
+}
 
 function validateOutput(output, outputFormat) {
   if (outputFormat === 'json') {
@@ -194,13 +206,15 @@ export async function* runDAG({
     const systemPrompt = GLOBAL_SYSTEM_BLOCK;
     const userPrompt = injectVariables(promptTemplate, varMap);
 
-    // 3. Determine model from tier
+    // 3. Determine model from tier + resolve provider/apiKey from llmConfig
+    const { provider, apiKey, reasoningModel, fastModel } = llmConfig;
     const model =
       tier === 'reasoning'
-        ? (llmConfig.reasoningModel || defaultModel)
-        : (llmConfig.fastModel || defaultModel);
+        ? (reasoningModel || defaultModel(provider))
+        : (fastModel || defaultModel(provider));
 
     const temperature = temperatureForLayer(layer);
+    const maxTokens = MAX_TOKENS_BY_LAYER[layer] || 4096;
 
     // 4. Call LLM (with one retry on validation failure at temp 0)
     let output = null;
@@ -209,13 +223,18 @@ export async function* runDAG({
     for (let attempt = 0; attempt < 2; attempt++) {
       try {
         const callTemp = attempt === 0 ? temperature : 0;
-        output = await callLLM({
+        const llmResponse = await callLLM({
+          provider,
+          apiKey,
           model,
           systemPrompt,
           userPrompt,
           temperature: callTemp,
-          llmConfig,
+          maxTokens,
         });
+
+        // Extract text from {text, usage} response
+        output = stripCodeFences(llmResponse.text);
 
         // 5. Validate
         validateOutput(output, outputFormat);

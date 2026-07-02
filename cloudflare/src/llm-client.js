@@ -49,7 +49,7 @@ export async function callLLM({
   systemPrompt = '',
   userPrompt,
   temperature = 0.7,
-  maxTokens = 1024,
+  maxTokens = 4096,
 }) {
   const resolvedModel = model || defaultModel(provider);
 
@@ -140,7 +140,8 @@ async function callOpenAI({ apiKey, model, systemPrompt, userPrompt, temperature
 async function callGemini({ apiKey, model, systemPrompt, userPrompt, temperature, maxTokens }) {
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
   const body = {
-    contents: [{ parts: [{ text: systemPrompt + '\n\n' + userPrompt }] }],
+    systemInstruction: systemPrompt ? { parts: [{ text: systemPrompt }] } : undefined,
+    contents: [{ role: 'user', parts: [{ text: userPrompt }] }],
     generationConfig: {
       temperature,
       maxOutputTokens: maxTokens,

@@ -14,6 +14,7 @@ Universal rules:
 export const NODE_PROMPTS = {
   product_summary: {
     id: '01',
+    label: 'Product Summary',
     layer: 1,
     tier: 'reasoning',
     failureToken: '{"error":"INSUFFICIENT_INPUT"}',
@@ -61,6 +62,7 @@ Output only the JSON object.
   },
   brand_context: {
     id: '02',
+    label: 'Brand Context',
     layer: 1,
     tier: 'reasoning',
     failureToken: '{"error":"INSUFFICIENT_INPUT"}',
@@ -107,6 +109,7 @@ Output only the JSON object.
   },
   brand_voice: {
     id: '03',
+    label: 'Brand Voice',
     layer: 1,
     tier: 'reasoning',
     failureToken: '{"error":"INSUFFICIENT_INPUT"}',
@@ -170,6 +173,7 @@ Output only the JSON object.
   },
   icp: {
     id: '04',
+    label: 'Ideal Customer Profile',
     layer: 1,
     tier: 'reasoning',
     failureToken: '{"error":"INSUFFICIENT_INPUT"}',
@@ -223,6 +227,7 @@ Output only the JSON object.
   },
   market_research: {
     id: '05',
+    label: 'Market Research',
     layer: 2,
     tier: 'reasoning',
     failureToken: '{"error":"INSUFFICIENT_INPUT"}',
@@ -269,6 +274,7 @@ No other sections. No executive summary.
   },
   customer_insights: {
     id: '06',
+    label: 'Customer Insights',
     layer: 2,
     tier: 'reasoning',
     failureToken: '{"error":"INSUFFICIENT_INPUT"}',
@@ -323,6 +329,7 @@ Output only the JSON object.
   },
   competitor_intel: {
     id: '07',
+    label: 'Competitor Intelligence',
     layer: 2,
     tier: 'reasoning',
     failureToken: '{"error":"INSUFFICIENT_INPUT"}',
@@ -372,6 +379,7 @@ No other sections.
   },
   gtm_strategy: {
     id: '08',
+    label: 'GTM Strategy',
     layer: 3,
     tier: 'reasoning',
     failureToken: 'INSUFFICIENT_INPUT',
@@ -420,6 +428,7 @@ No other sections. Total length under 900 words.
   },
   channel_priorities: {
     id: '09',
+    label: 'Channel Priorities',
     layer: 3,
     tier: 'reasoning',
     failureToken: '{"error":"INSUFFICIENT_INPUT"}',
@@ -466,6 +475,7 @@ Output only the JSON object. Verify ice_total = impact + confidence + ease for e
   },
   campaign_plan: {
     id: '10',
+    label: 'Campaign Plan',
     layer: 3,
     tier: 'reasoning',
     failureToken: 'INSUFFICIENT_INPUT',
@@ -510,6 +520,7 @@ No other sections. Under 700 words.
   },
   analytics_plan: {
     id: '17',
+    label: 'Analytics Plan',
     layer: 3,
     tier: 'reasoning',
     failureToken: '{"error":"INSUFFICIENT_INPUT"}',
@@ -557,6 +568,7 @@ Output only the JSON object.
   },
   seo_brief: {
     id: '11',
+    label: 'SEO Brief',
     layer: 4,
     tier: 'reasoning',
     failureToken: '{"error":"INSUFFICIENT_INPUT"}',
@@ -609,6 +621,7 @@ Output only the JSON object.
   },
   blog_briefs: {
     id: '12',
+    label: 'Blog Briefs',
     layer: 4,
     tier: 'reasoning',
     failureToken: '{"error":"INSUFFICIENT_INPUT"}',
@@ -658,6 +671,7 @@ Output only the JSON array.
   },
   social_posts: {
     id: '13',
+    label: 'Social Content',
     layer: 4,
     tier: 'reasoning',
     failureToken: '{"error":"INSUFFICIENT_INPUT"}',
@@ -707,6 +721,7 @@ Output only the JSON array.
   },
   email_sequence: {
     id: '14',
+    label: 'Email Sequence',
     layer: 4,
     tier: 'reasoning',
     failureToken: '{"error":"INSUFFICIENT_INPUT"}',
@@ -763,6 +778,7 @@ Output only the JSON object.
   },
   landing_page_copy: {
     id: '15',
+    label: 'Landing Page Copy',
     layer: 4,
     tier: 'reasoning',
     failureToken: 'INSUFFICIENT_INPUT',
@@ -806,6 +822,7 @@ No other commentary before, between, or after sections.
   },
   cro_recommendations: {
     id: '16',
+    label: 'CRO Recommendations',
     layer: 4,
     tier: 'reasoning',
     failureToken: '{"error":"INSUFFICIENT_INPUT"}',
@@ -850,6 +867,7 @@ Verify every pie.total equals potential + importance + ease before output. Outpu
   },
   social_posting_plan: {
     id: '18',
+    label: 'Social Posting Plan',
     layer: 5,
     tier: 'fast',
     failureToken: '{"error":"INSUFFICIENT_INPUT"}',
@@ -894,6 +912,7 @@ Validate before output: every input post appears exactly once; no same-channel p
   },
   content_backlog: {
     id: '19',
+    label: 'Content Backlog',
     layer: 5,
     tier: 'fast',
     failureToken: '{"error":"INSUFFICIENT_INPUT"}',
@@ -942,6 +961,7 @@ Sort by priority then campaign_week. Output only the JSON array.
   },
   execution_backlog: {
     id: '20',
+    label: 'Execution Backlog',
     layer: 5,
     tier: 'fast',
     failureToken: '{"error":"INSUFFICIENT_INPUT"}',
@@ -993,6 +1013,7 @@ Output only the JSON array.
   },
   draft_queue: {
     id: '21',
+    label: 'Draft Queue',
     layer: 5,
     tier: 'fast',
     failureToken: '{"error":"INSUFFICIENT_INPUT"}',
@@ -1046,6 +1067,7 @@ Verify queue_stats counts match the queue array before output. Output only the J
   },
   cron_manifest: {
     id: '22',
+    label: 'Operating Rhythm',
     layer: 5,
     tier: 'fast',
     failureToken: '{"error":"INSUFFICIENT_INPUT"}',
@@ -1092,6 +1114,7 @@ Output only the JSON object.
   },
   content_gen_prompt: {
     id: '23',
+    label: 'Content Gen Prompt',
     layer: 5,
     tier: 'reasoning',
     failureToken: 'INSUFFICIENT_INPUT',

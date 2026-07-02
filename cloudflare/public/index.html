@@ -136,18 +136,11 @@
             <label for="description">Description</label>
             <textarea id="description" name="description" placeholder="CRM and automation software for small clinics to capture leads, send reminders, reduce no-shows, and grow patient bookings." required></textarea>
           </div>
-          <div class="field">
-            <div class="mode-tabs">
-              <button type="button" class="mode-tab" data-mode="ai" id="tab-ai">🤖 AI-powered (BYOK)</button>
-              <button type="button" class="mode-tab active" data-mode="instant" id="tab-instant">⚡ Instant (deterministic)</button>
-            </div>
-          </div>
-
-          <!-- AI mode fields -->
-          <div id="ai-section" class="mode-section">
+          <!-- AI mode fields (BYOK) -->
+          <div id="ai-section" class="mode-section active">
             <div class="field">
               <div class="toolbar">
-                <label for="llm-provider">LLM provider for strategy generation</label>
+                <label for="llm-provider">LLM provider</label>
                 <div class="tiny">Paste your own LLM key. Each full run costs ~$1.50–3.00 on your key.</div>
               </div>
               <div class="byok-grid">
@@ -161,14 +154,10 @@
               </div>
               <div class="hint">Your key is sent per-request only over HTTPS. Never stored.</div>
             </div>
-          </div>
-
-          <!-- Instant mode fields -->
-          <div id="instant-section" class="mode-section active">
             <div class="field">
               <div class="toolbar">
-                <label for="byok-provider">Bring your own image key</label>
-                <div class="tiny">Optional. If blank, the demo uses any server key available or falls back to prompt-only outputs.</div>
+                <label for="byok-provider">Image generation key (optional)</label>
+                <div class="tiny">For logo/social image generation. Falls back to prompt-only if blank.</div>
               </div>
               <div class="byok-grid">
                 <select id="byok-provider" name="byok_provider" aria-label="Image provider">
@@ -178,7 +167,7 @@
                 </select>
                 <input id="byok-api-key" name="byok_api_key" type="password" placeholder="Paste your Gemini or OpenAI image key" autocomplete="off" spellcheck="false" />
               </div>
-              <div class="hint">BYOK mode sends the key only with this request over HTTPS. The app does not save it in the browser or on the Worker.</div>
+              <div class="hint">Optional. Used for logo pack and social media image generation.</div>
             </div>
           </div>
 
@@ -198,7 +187,7 @@
             <div id="deliverable-list" class="checks" aria-live="polite"></div>
           </div>
           <div class="actions">
-            <button class="primary" type="submit">Generate presentable outputs</button>
+            <button class="primary" type="submit">🤖 Generate with AI</button>
             <div class="hint">Word downloads, HTML docs, and PDF-ready print views.</div>
           </div>
           <div id="status" class="status"></div>
@@ -273,17 +262,9 @@
       social_posts: ['market_research', 'competitor_intel', 'customer_insights', 'brand_identity_suite', 'logo_pack'],
     };
 
-    let currentMode = 'instant';
+    let currentMode = 'ai';
 
-    // Mode tab switching
-    document.querySelectorAll('.mode-tab').forEach((tab) => {
-      tab.addEventListener('click', () => {
-        currentMode = tab.dataset.mode;
-        document.querySelectorAll('.mode-tab').forEach((t) => t.classList.toggle('active', t === tab));
-        document.getElementById('ai-section').classList.toggle('active', currentMode === 'ai');
-        document.getElementById('instant-section').classList.toggle('active', currentMode === 'instant');
-      });
-    });
+    // No mode tabs — AI mode only
 
     async function loadDeliverables() {
       const response = await fetch('/deliverables');
@@ -362,8 +343,6 @@
 
       if (currentMode === 'ai') {
         await runAIMode(name, description, selectedItems);
-      } else {
-        await runInstantMode(name, description, selectedItems);
       }
     });
 
@@ -448,7 +427,12 @@
       const payload = {
         name, description,
         selected_nodes: selectedItems,
-        byok: { llm_key: llmKey, llm_provider: llmProvider },
+        byok: {
+          llm_key: llmKey,
+          llm_provider: llmProvider,
+          image_key: document.getElementById('byok-api-key').value.trim() || undefined,
+          image_provider: document.getElementById('byok-provider').value || undefined,
+        },
       };
 
       let completedNodes = 0;
