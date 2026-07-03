@@ -214,7 +214,7 @@ async function callOpenRouter({ apiKey, model, systemPrompt, userPrompt, tempera
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${apiKey}`,
       'HTTP-Referer': 'https://arjun-marketing-os.srksourabh.workers.dev',
-      'X-Title': 'Orzun Marketing OS',
+      'X-Title': 'Arjun Marketing OS',
     },
     body: JSON.stringify(body),
   });

@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Orzun Marketing OS</title>
+  <title>Arjun Marketing OS</title>
   <style>
     :root {
       color-scheme: dark;
@@ -53,8 +53,15 @@
     .toolbar, .actions, .result-head, .result-meta { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; }
     .actions { justify-content: flex-start; }
     .linkish, .download-btn { border: 0; background: transparent; color: #bdd0ff; font: inherit; padding: 0; cursor: pointer; text-decoration: none; }
-    .checks { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; max-height: 460px; overflow: auto; padding-right: 4px; }
+    .checks { display: grid; gap: 16px; }
+    .check-group { display: grid; gap: 12px; }
+    .check-group-header { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+    .check-group-header strong { font-size: 14px; letter-spacing: 0.02em; }
+    .check-group-header span { color: var(--muted); font-size: 13px; }
+    .check-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
     .check { display: flex; gap: 12px; align-items: flex-start; border: 1px solid rgba(148, 163, 184, 0.13); background: var(--panel-2); border-radius: 18px; padding: 14px; min-height: 86px; }
+    .check.recommended { border-color: rgba(61, 217, 180, 0.18); background: linear-gradient(180deg, rgba(12, 24, 36, 0.94), rgba(10, 20, 31, 0.92)); }
+    .check.advanced { background: rgba(9, 16, 29, 0.72); }
     .check input { width: 18px; height: 18px; margin-top: 2px; accent-color: var(--accent); }
     .check strong { display: block; margin-bottom: 5px; }
     .check span, .hint, .tiny, .status { color: var(--muted); font-size: 14px; line-height: 1.6; }
@@ -100,18 +107,18 @@
     .mode-section { display: none; }
     .mode-section.active { display: grid; gap: 18px; }
     @media (max-width: 1050px) { .hero, .grid { grid-template-columns: 1fr; } }
-    @media (max-width: 820px) { .checks { grid-template-columns: 1fr; max-height: none; } .byok-grid { grid-template-columns: 1fr; } }
+    @media (max-width: 820px) { .check-grid { grid-template-columns: 1fr; } .byok-grid { grid-template-columns: 1fr; } }
   </style>
 </head>
 <body>
   <main class="shell">
     <section class="hero">
       <div>
-        <div class="eyebrow">Orzun demo · Cloudflare-hosted marketing OS</div>
-        <h1>Generate the board-ready growth pack.</h1>
+        <div class="eyebrow">Arjun Marketing OS · Cloudflare-hosted BYOK marketing system</div>
+        <h1>Generate the growth pack you can actually send.</h1>
         <p class="lede">
-          This version delivers presentable outputs, not raw JSON sludge. It generates executive-style reports,
-          brand voice, logo assets, social packs with hashtags, and Word/PDF-ready downloadables.
+          Turn a lightweight product brief into research, positioning, brand assets, social creative, and packaged reports.
+          The output is built to review, share, and export — not just skim in a console.
         </p>
       </div>
       <div class="hero-card">
@@ -174,22 +181,23 @@
 
           <div class="field">
             <div class="toolbar">
-              <label>Select the outputs you want</label>
+              <label>Select what to generate</label>
               <div class="actions">
-                <button class="linkish" type="button" id="select-all">Select all</button>
+                <button class="linkish" type="button" id="select-core">Recommended pack</button>
+                <button class="linkish" type="button" id="select-all">Everything</button>
                 <button class="linkish" type="button" id="clear-all">Clear</button>
               </div>
             </div>
             <div class="workflow-plan">
               <strong>Analysis-first workflow</strong>
               <div id="workflow-steps" class="workflow-steps"></div>
-              <div class="hint">If you select brand identity, logo pack, or social content, the earlier research steps are auto-added and run first.</div>
+              <div class="hint">Brand, logo, and social outputs automatically pull in the research they need first.</div>
             </div>
             <div id="deliverable-list" class="checks" aria-live="polite"></div>
           </div>
           <div class="actions">
-            <button class="primary" type="submit">🤖 Generate with AI</button>
-            <div class="hint">Word downloads, HTML docs, and PDF-ready print views.</div>
+            <button class="primary" type="submit">Generate pack</button>
+            <div class="hint">Exports include HTML reports, print-ready views, and downloadable files.</div>
           </div>
           <div id="status" class="status"></div>
         </form>
@@ -197,13 +205,13 @@
 
       <aside class="panel split">
         <div>
-          <h2 style="margin-top:0">What this version changes</h2>
-          <p class="hint">This is built to feel like a deliverable, not a debug endpoint.</p>
+          <h2 style="margin-top:0">What you get</h2>
+          <p class="hint">A research-backed marketing pack that is ready to review, forward, and export.</p>
         </div>
         <div class="side-list">
           <div class="side-item">
             <strong>Presentable reports</strong>
-            CEO-style docs for market research, competition analysis, GTM strategy, and campaign planning.
+            Executive-style docs for market research, competitive pressure, GTM direction, and campaign planning.
           </div>
           <div class="side-item">
             <strong>Brand outputs</strong>
@@ -211,7 +219,7 @@
           </div>
           <div class="side-item">
             <strong>Content outputs</strong>
-            Social posts with hashtags, email sequence, landing copy, and briefs in doc format.
+            Social posts, email sequence, landing copy, and working briefs in exportable formats.
           </div>
         </div>
         <div id="brand-snapshot" class="brand-snapshot" hidden>
@@ -295,6 +303,7 @@
     };
 
     const EXPORT_ONLY_IDS = new Set(['master_board_pack', 'full_pack_bundle']);
+    const RECOMMENDED_IDS = new Set(['ceo_market_report', 'brand_identity_suite', 'logo_pack', 'social_posts', 'master_board_pack', 'full_pack_bundle']);
 
     function expandSelectedNodes(selectedItems) {
       const expanded = new Set();
@@ -320,19 +329,39 @@
         .sort((a, b) => a.workflow_stage - b.workflow_stage)
         .map((item) => `<span class="workflow-chip">${item.workflow_stage}. ${item.label}</span>`)
         .join('');
-      deliverableList.innerHTML = data.items.map((item) => `
-        <label class="check">
-          <input type="checkbox" name="selected_items" value="${item.id}" ${EXPORT_ONLY_IDS.has(item.id) ? '' : 'checked'} />
+      const renderOption = (item, recommended = false) => `
+        <label class="check ${recommended ? 'recommended' : 'advanced'}">
+          <input type="checkbox" name="selected_items" value="${item.id}" ${RECOMMENDED_IDS.has(item.id) ? 'checked' : ''} />
           <div>
             <strong>${item.label}</strong>
-            <span>Generate this as a presentable deliverable.</span>
+            <span>${recommended ? 'Best for a first full run.' : 'Available when you want the underlying working artifacts too.'}</span>
             <div class="check-meta">
               ${item.analysis_first ? `<span class="mini-pill">Step ${item.workflow_stage}</span>` : ''}
               ${(item.dependencies || []).length ? `<span class="mini-pill">Needs: ${(item.dependencies || []).map((dependency) => data.items.find((candidate) => candidate.id === dependency)?.label || dependency).join(' → ')}</span>` : ''}
             </div>
           </div>
         </label>
-      `).join('');
+      `;
+
+      const recommended = data.items.filter((item) => RECOMMENDED_IDS.has(item.id));
+      const advanced = data.items.filter((item) => !RECOMMENDED_IDS.has(item.id));
+
+      deliverableList.innerHTML = `
+        <section class="check-group">
+          <div class="check-group-header">
+            <strong>Recommended pack</strong>
+            <span>The closest thing to a final client-facing delivery.</span>
+          </div>
+          <div class="check-grid">${recommended.map((item) => renderOption(item, true)).join('')}</div>
+        </section>
+        <section class="check-group">
+          <div class="check-group-header">
+            <strong>Advanced outputs</strong>
+            <span>Use these when you need the intermediate strategy, planning, or operating artifacts.</span>
+          </div>
+          <div class="check-grid">${advanced.map((item) => renderOption(item, false)).join('')}</div>
+        </section>
+      `;
       document.querySelectorAll('input[name="selected_items"]').forEach((node) => {
         node.addEventListener('change', () => syncDependencies(node.value, node.checked));
       });
@@ -352,6 +381,12 @@
 
     document.getElementById('select-all').addEventListener('click', () => {
       document.querySelectorAll('input[name="selected_items"]').forEach((node) => { node.checked = true; });
+    });
+
+    document.getElementById('select-core').addEventListener('click', () => {
+      document.querySelectorAll('input[name="selected_items"]').forEach((node) => {
+        node.checked = RECOMMENDED_IDS.has(node.value);
+      });
     });
 
     document.getElementById('clear-all').addEventListener('click', () => {
@@ -401,7 +436,7 @@
           api_key: document.getElementById('byok-api-key').value.trim(),
         },
       };
-      statusNode.textContent = 'Running Orzun (instant mode)...';
+      statusNode.textContent = 'Building your pack...';
       try {
         const response = await fetch('/experience', {
           method: 'POST',
@@ -412,8 +447,8 @@
         if (!response.ok) throw new Error(data.detail || 'Request failed');
 
         statusNode.textContent = data.auto_added_dependencies?.length
-          ? `Done. ${data.selected_outputs.length} output(s) ready. Auto-added: ${data.auto_added_dependencies.map((id) => data.generation_flow.find((step) => step.id === id)?.label || id).join(', ')}.`
-          : `Done. ${data.selected_outputs.length} output(s) ready.`;
+          ? `Done. ${data.selected_outputs.length} deliverable(s) are ready. Research dependencies were added automatically: ${data.auto_added_dependencies.map((id) => data.generation_flow.find((step) => step.id === id)?.label || id).join(', ')}.`
+          : `Done. ${data.selected_outputs.length} deliverable(s) are ready.`;
         statusNode.classList.add('success');
         productDirNode.textContent = `Workspace: ${data.product_dir}`;
         renderBrandSnapshot(data.brand_snapshot);
@@ -461,7 +496,7 @@
     async function runAIMode(name, description, selectedItems) {
       const llmKey = document.getElementById('llm-api-key').value.trim();
       if (!llmKey) {
-        statusNode.textContent = 'Paste an LLM API key (Anthropic, OpenAI, Gemini, or OpenRouter) to generate.';
+        statusNode.textContent = 'Paste an LLM API key (Anthropic, OpenAI, Gemini, or OpenRouter) to generate the pack.';
         statusNode.classList.add('error');
         return;
       }
@@ -469,18 +504,18 @@
       const selectedNodes = expandSelectedNodes(selectedItems);
       const exportSelections = selectedItems.filter((item) => EXPORT_ONLY_IDS.has(item));
       if (selectedNodes.length === 0) {
-        statusNode.textContent = 'No AI generation nodes were selected.';
+        statusNode.textContent = 'No generation steps were selected.';
         statusNode.classList.add('error');
         return;
       }
 
       progressPanel.hidden = false;
       if (exportSelections.includes('full_pack_bundle')) {
-        statusNode.textContent = `Running AI generation for ${selectedNodes.length} core nodes. ZIP packaging happens after results are ready.`;
+        statusNode.textContent = `Running ${selectedNodes.length} generation steps. The ZIP export will be assembled after the core deliverables are ready.`;
       } else if (exportSelections.includes('master_board_pack')) {
-        statusNode.textContent = `Running AI generation for ${selectedNodes.length} core nodes. Master board pack is assembled after results are ready.`;
+        statusNode.textContent = `Running ${selectedNodes.length} generation steps. The master board pack will be assembled after the core deliverables are ready.`;
       } else {
-        statusNode.textContent = `Starting AI-powered generation for ${selectedNodes.length} core nodes...`;
+        statusNode.textContent = `Running ${selectedNodes.length} generation steps...`;
       }
 
       const llmProvider = document.getElementById('llm-provider').value || undefined;
@@ -531,12 +566,12 @@
               if (event.type === 'node_start') totalNodes++;
               if (event.type === 'node_complete') { completedNodes++; allArtifacts[event.nodeId] = event.output; }
               if (event.type === 'complete') allArtifacts = event.artifacts || allArtifacts;
-              statusNode.textContent = `AI generation: ${completedNodes}/${totalNodes || '?'} nodes complete...`;
+              statusNode.textContent = `Generation progress: ${completedNodes}/${totalNodes || '?'} steps complete...`;
             } catch (e) { /* skip malformed */ }
           }
         }
 
-        statusNode.textContent = `Done. ${completedNodes} AI-generated artifact(s) ready.`;
+        statusNode.textContent = `Done. ${completedNodes} generated artifact(s) are ready.`;
         statusNode.classList.add('success');
         renderAIResults(allArtifacts);
       } catch (error) {
