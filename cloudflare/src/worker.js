@@ -3,7 +3,7 @@ import { buildExperience, enrichDeliverableOption } from './experience.js';
 import { json } from './utils.js';
 import { runDAG } from './orchestrator.js';
 import { inferLLMProvider, defaultModel, defaultFastModel } from './llm-client.js';
-import { inferProviderFromKey } from './assets.js';
+import { inferProviderFromKey, resolveImageGenerationConfig } from './assets.js';
 
 export default {
   async fetch(request, env) {
@@ -73,14 +73,19 @@ export default {
         const llmConfig = { provider, apiKey: llmKey, reasoningModel, fastModel };
 
         // Image generation config.
-        // Fallback: if no separate image key is provided, reuse the main LLM key
-        // when it is a Gemini or OpenAI key.
+        // Priority: explicit BYOK image key -> shared Gemini/OpenAI LLM key -> server fallback keys -> prompt-only.
         const explicitImgKey = (byok.image_key || '').trim();
         const explicitImgProvider = byok.image_provider || inferProviderFromKey(explicitImgKey);
         const sharedKeyProvider = (provider === 'gemini' || provider === 'openai') ? provider : '';
-        const imgKey = explicitImgKey || (sharedKeyProvider ? llmKey : '');
-        const imgProvider = explicitImgProvider || (explicitImgKey ? inferProviderFromKey(explicitImgKey) : sharedKeyProvider);
-        const imageConfig = imgKey && imgProvider ? { apiKey: imgKey, provider: imgProvider } : null;
+        const imageRuntime = resolveImageGenerationConfig({
+          byok: {
+            api_key: explicitImgKey || (sharedKeyProvider ? llmKey : ''),
+            provider: explicitImgProvider || sharedKeyProvider,
+          },
+        }, env);
+        const imageConfig = imageRuntime.ready && imageRuntime.apiKey
+          ? { apiKey: imageRuntime.apiKey, provider: imageRuntime.key, source: imageRuntime.source }
+          : null;
 
         const encoder = new TextEncoder();
         const { readable, writable } = new TransformStream();
