@@ -50,17 +50,17 @@ export function buildBrandSystem(product) {
       'specific, premium, and visually evocative',
     ]
     : [
-      'clear enough for a board update',
-      'confident without startup cosplay',
-      `speaks directly to ${product.audience}`,
-      'specific, proof-led, commercially literate',
+      'clear enough for an executive review',
+      'confident without sounding performative',
+      `written for ${product.audience}`,
+      'specific, backed by proof, and tied to buyer decisions',
     ];
   return {
     archetype,
     tagline,
     promise: fashion
       ? `${product.name} helps ${product.audience} find ${problem} with greater confidence in quality, beauty, and occasion-fit.`
-      : `${product.name} helps ${product.audience} get ${problemNeed} with less friction and more control.`,
+      : `${product.name} helps ${product.audience} get ${problemNeed} faster, with fewer handoffs and less waste.`,
     essence: fashion
       ? `${product.category} built on authenticity, elegance, and occasion-ready confidence.`
       : `${product.category} growth system built for credibility and measurable outcomes.`,
@@ -69,14 +69,14 @@ export function buildBrandSystem(product) {
       : `Become the most trusted ${product.category} growth platform for ${product.audience}, known for delivering ${problemNeed} as an operating advantage.`,
     mission: fashion
       ? `Help ${product.audience} discover beautifully crafted pieces that feel timeless, premium, and deeply wearable.`
-      : `Give ${product.audience} a cleaner, faster, and more commercially reliable way to win.`,
+      : `Help ${product.audience} move faster, make better calls, and stop leaking momentum in the middle of execution.`,
     positioningCore,
     marketPositioning: fashion
       ? 'premium heritage-led fashion label with modern presentation, stronger trust cues, and more occasion-specific desirability than generic marketplace sellers'
-      : 'premium-performance niche player with sharper proof and a more operator-friendly experience than broad incumbents',
+      : 'focused premium player with sharper proof, tighter execution, and a better fit for lean teams than broad suites',
     reasonsToBelieve: fashion
       ? ['authentic craftsmanship and textile quality', 'distinctive styling rooted in heritage', 'premium presentation that fits gifting and occasion buying']
-      : ['clear before/after proof framing', 'faster time-to-value than bloated incumbents', 'operator-friendly workflow design'],
+      : ['proof a buyer can verify quickly', 'faster time to value than heavyweight suites', 'workflow design that lean teams can actually run'],
     tonalSliders: fashion
       ? [['luxurious', 'approachable'], ['heritage', 'modern'], ['ornate', 'refined']]
       : [['premium', 'practical'], ['strategic', 'clear'], ['modern', 'credible']],
@@ -104,16 +104,16 @@ export function buildStrategy(product, brand) {
       `mid-market buyers prioritizing proof, speed, and ROI visibility`,
       `teams replacing fragmented manual workflows`,
     ],
-    targeting: `Prioritize ${product.audience} that already feel the cost of missing ${problemNeed} and can buy on commercial logic, not curiosity.`,
+    targeting: `Prioritize ${product.audience} already paying the price for missing ${problemNeed} and able to justify the buy on hard ROI.`,
     positioning: brand.positioningCore,
   };
   return {
-    positioningStatement: `${product.name} is the ${product.category} choice for ${product.audience} that want ${problemNeed} without adding operational drag.`,
-    marketPositioning: `${product.name} should occupy the premium, proof-led position between bloated incumbents and underpowered niche tools.`,
+    positioningStatement: `${product.name} is the ${product.category} choice for ${product.audience} that want ${problemNeed} without adding more process overhead.`,
+    marketPositioning: `${product.name} should sit above generic tools and below heavyweight suites: easier to buy, faster to deploy, and easier to trust.`,
     valueProps: product.messagingPillars,
-    campaignThemes: ['pain-point clarity', 'proof-led differentiation', 'commercial confidence'],
+    campaignThemes: ['pain in plain English', 'proof buyers can verify', 'a next step that feels easy to take'],
     opportunities: [
-      `Own the trust narrative in ${product.category}.`,
+      `Own the trust conversation in ${product.category}.`,
       market.channelOpportunities[0],
       `Directly neutralize the objection: ${customer.objections[0]}`,
       competitor.differentiationAngles[0],
@@ -121,10 +121,10 @@ export function buildStrategy(product, brand) {
     ],
     gtmMotion: gtmMotion(product.businessModel),
     funnelSummary: [
-      'Acquire through high-intent search and authority content',
-      'Capture with conversion-aware proof and one clean CTA',
-      'Convert with objection handling, demos, and lifecycle follow-up',
-      'Retain through reporting, adoption prompts, and expansion stories',
+      'Acquire through high-intent search and opinionated authority content',
+      'Capture with proof, sharp positioning, and one clear CTA',
+      'Convert with objection handling, demos, and disciplined follow-up',
+      'Retain through reporting, adoption prompts, and expansion stories buyers can repeat internally',
     ],
     channelPriorities: product.channels.slice(0, 4).map((channel, index) => ({
       rank: index + 1,
@@ -132,11 +132,11 @@ export function buildStrategy(product, brand) {
       whyNow: {
         seo: 'compounds demand capture and commercial-intent discovery',
         email: 'turns captured attention into pipeline and retention',
-        linkedin: 'best channel for proof, founder POV, and operator trust',
-        instagram: 'best for branded proof, lifestyle framing, and short-form reach',
-        youtube: 'best for authority and deep education',
-        social: 'keeps the brand visible and multiplies proof assets',
-      }[channel] || 'supports awareness and deal progression when paired with proof',
+        linkedin: 'best channel for proof, founder perspective, and buyer trust',
+        instagram: 'best for branded proof, visual framing, and short-form reach',
+        youtube: 'best for authority and deeper buyer education',
+        social: 'keeps the brand visible and gives proof more places to travel',
+      }[channel] || 'supports awareness and deal movement when paired with real proof',
     })),
     stp,
     market,
@@ -152,10 +152,10 @@ export function buildCampaignPlan(product, objective) {
     objective,
     calendarWeeks: 12,
     phasePlan: [
-      { phase: 'Weeks 1-2', focus: 'Positioning lock, asset system, proof architecture', outputs: ['brand story', 'landing page hero', 'logo + palette'] },
-      { phase: 'Weeks 3-6', focus: 'Demand capture and proof distribution', outputs: ['social series', 'SEO pieces', 'email sequence'] },
-      { phase: 'Weeks 7-9', focus: 'Conversion lift and funnel tuning', outputs: ['CRO tests', 'offer framing', 'objection assets'] },
-      { phase: 'Weeks 10-12', focus: 'Performance review and scale decisions', outputs: ['board update', 'channel scorecard', 'next-quarter bets'] },
+      { phase: 'Weeks 1-2', focus: 'Lock positioning, core assets, and proof architecture', outputs: ['brand story', 'landing page hero', 'logo + palette'] },
+      { phase: 'Weeks 3-6', focus: 'Capture demand and distribute proof', outputs: ['social series', 'SEO pieces', 'email sequence'] },
+      { phase: 'Weeks 7-9', focus: 'Lift conversion and tighten the funnel', outputs: ['CRO tests', 'offer framing', 'objection assets'] },
+      { phase: 'Weeks 10-12', focus: 'Review performance and decide what to scale', outputs: ['board update', 'channel scorecard', 'next-quarter bets'] },
     ],
     experiments: [
       'Proof-first hero vs pain-first hero',
@@ -260,7 +260,7 @@ export function marketResearch(product) {
       'Few brands connect brand story to operational ROI cleanly enough for executive buyers.',
     ],
     positioningMoves: [
-      'Frame the offer as the premium, proof-led option rather than the broadest option.',
+      'Frame the offer as the sharpest choice, not the broadest one.',
       'Turn setup speed and reporting clarity into visible buying advantages.',
       'Use category education to make alternatives feel operationally expensive.',
     ],
@@ -301,7 +301,7 @@ export function customerInsights(product) {
       : ['confidence in the decision', 'faster path to measurable outcomes', 'clearer operational control'],
     jobsToBeDone: fashion
       ? ['Find a saree that signals quality instantly', 'Reduce the risk of an expensive occasionwear mistake', 'Feel styled, culturally grounded, and premium in the moment that matters']
-      : ['Reduce operational drag', 'Improve confidence in commercial decisions', 'Adopt a system that shows visible business value quickly'],
+      : ['Cut process drag', 'Make commercial decisions with more confidence', 'Adopt a system that shows business value quickly'],
     purchaseTriggers: fashion
       ? ['Wedding or festive calendar event', 'Gifting or family occasion with higher emotional stakes', 'Need for a more premium wardrobe anchor than marketplace alternatives']
       : ['Cost of the current workflow becomes obvious', 'Leadership pressure for cleaner reporting', 'A buying moment opens after a failed workaround or stalled growth target'],
@@ -417,7 +417,7 @@ export function inferProblem(name, brief, category = '') {
     return 'complete, research-backed marketing deliverables from a lightweight product brief';
   }
   if ((name || '').toLowerCase().includes('marketing os') || category === 'marketing software') {
-    return 'going from a raw product brief to board-ready marketing strategy and content without manual agency-style overhead';
+    return 'going from a raw product brief to executive-ready marketing strategy and content without manual agency-style overhead';
   }
   const seeking = cleaned.match(/seeking\s+(.+)$/i);
   if (seeking) return seeking[1].trim().replace(/[.]+$/, '');

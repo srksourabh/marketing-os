@@ -82,8 +82,8 @@ export async function buildAssets(product, brand, strategy, campaignPlan, imageP
     {
       id: 'social-1',
       channel: socialChannel,
-      hook: `Most teams do not have a lead problem. They have a trust-to-conversion problem.`,
-      body: `${product.name} helps ${product.audience} get ${problemNeed} without adding more operational drag. The positioning move is simple: stop listing features and start proving commercial outcomes.`,
+      hook: `Most teams do not have a lead problem. They have a credibility problem.`,
+      body: `${product.name} helps ${product.audience} get ${problemNeed} without adding another layer of process. The fix is usually the same: stop listing features, start proving outcomes, and make the next step obvious.`,
       cta: primaryCta(product.businessModel),
       hashtags,
       creativeDirection: 'Dark premium card with one proof statistic and one brutal buying truth.',
@@ -93,7 +93,7 @@ export async function buildAssets(product, brand, strategy, campaignPlan, imageP
       id: 'social-2',
       channel: socialChannel,
       hook: `Why buyers stall before conversion`,
-      body: `Because the message is vague, the proof arrives late, and the CTA asks for too much too early. ${product.name} should lead with clarity, proof, and a next step that feels earned.`,
+      body: `Because the message is fuzzy, the proof shows up too late, and the CTA asks for commitment before trust exists. ${product.name} should lead with clarity, proof, and a next step a serious buyer can say yes to quickly.`,
       cta: 'Comment “audit” for the teardown version.',
       hashtags,
       creativeDirection: 'Carousel: friction, proof gap, fix, CTA map.',
@@ -102,8 +102,8 @@ export async function buildAssets(product, brand, strategy, campaignPlan, imageP
     {
       id: 'social-3',
       channel: socialChannel,
-      hook: `What makes ${product.name} different is not the tool. It is the operating advantage.`,
-      body: `Anchor the story around ${product.differentiators.join(', ')}. Translate each into one business outcome. That is what makes the brand feel premium instead of noisy.`,
+      hook: `What makes ${product.name} different is not the feature list. It is the speed of good decisions.`,
+      body: `Anchor the story around ${product.differentiators.join(', ')}. Turn each into a business result a buyer can repeat to their team. That is what makes the brand feel sharp instead of loud.`,
       cta: 'Save this for the next positioning review.',
       hashtags,
       creativeDirection: 'Single-image post with brand colors, logo mark, and three differentiator blocks.',
@@ -113,9 +113,9 @@ export async function buildAssets(product, brand, strategy, campaignPlan, imageP
   const emailSequence = [
     {
       stage: 'Email 1',
-      subject: `${product.name}: the cleaner path to solving ${product.problem}`,
+      subject: `${product.name}: a cleaner way to solve ${product.problem}`,
       purpose: 'Reframe the core pain commercially.',
-      body: `If the current workflow keeps leaking time, attention, or revenue, the fix is rarely more effort. It is better system design. ${product.name} gives ${product.audience} a cleaner operating path with more visibility and less drag.`,
+      body: `If the current workflow keeps leaking time, attention, or revenue, adding more effort will not fix it. Better system design will. ${product.name} gives ${product.audience} a cleaner path with more visibility and fewer avoidable handoffs.`,
     },
     {
       stage: 'Email 2',
@@ -127,12 +127,12 @@ export async function buildAssets(product, brand, strategy, campaignPlan, imageP
       stage: 'Email 3',
       subject: `The next step if the current process is costing growth`,
       purpose: 'Drive one concrete CTA.',
-      body: `Do not stack five actions. Ask for one clean move: ${primaryCta(product.businessModel)}. Pair it with proof and urgency that feels earned, not theatrical.`,
+      body: `Do not stack five actions. Ask for one clear move: ${primaryCta(product.businessModel)}. Pair it with proof and a reason to act now, not fake urgency.`,
     },
   ];
 
   const landingPage = [
-    { title: 'Hero', copy: `${brand.tagline}. Built for ${product.audience} that need ${product.problem} solved with less noise.` },
+    { title: 'Hero', copy: `${brand.tagline}. Built for ${product.audience} that need ${product.problem} solved without extra noise or handoffs.` },
     { title: 'Proof strip', copy: `Lead with three proof blocks: ${product.proofPoints.join(', ')}.` },
     { title: 'Differentiation', copy: `Translate ${product.differentiators.join(', ')} into business outcomes.` },
     { title: 'CTA', copy: primaryCta(product.businessModel) },

@@ -7,7 +7,7 @@ import { arrayBufferToBase64 } from './utils.js';
 export async function buildExperience(payload, env) {
   const name = String(payload.name || '').trim();
   const description = String(payload.description || '').trim();
-  const objective = String(payload.objective || 'Create a premium brand system and a board-ready marketing growth pack').trim();
+  const objective = String(payload.objective || 'Build a sharp brand system and an executive-ready growth pack').trim();
   const requestedItems = Array.isArray(payload.selected_items) ? payload.selected_items : [];
   const requestedValidItems = requestedItems.filter((item) => OPTION_INDEX[item]);
   const selectedItems = normalizeSelectedItems(requestedItems);

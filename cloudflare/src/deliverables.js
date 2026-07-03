@@ -18,7 +18,7 @@ export function buildDeliverableMap(product, brand, strategy, campaignPlan, asse
   const contentPrompt = buildContentPrompt(product, brand, strategy, assets);
 
   const deliverables = {
-    ceo_market_report: richDocArtifact({ title: `${product.name} CEO Growth Brief`, category: 'Board pack', summary: 'Board-ready market research, competition landscape, GTM strategy, and a 90-day operating plan.', html: reportHtml, filenameBase: `${product.slug}-ceo-growth-brief` }),
+    ceo_market_report: richDocArtifact({ title: `${product.name} CEO Growth Brief`, category: 'Board pack', summary: 'Executive-ready market read, competitive pressure map, GTM strategy, and a 90-day operating plan.', html: reportHtml, filenameBase: `${product.slug}-ceo-growth-brief` }),
     brand_identity_suite: richDocArtifact({ title: `${product.name} Brand Identity Suite`, category: 'Brand system', summary: `${brand.tagline} Includes palette, typography, voice rules, messaging, and usage guidance.`, html: brandHtml, filenameBase: `${product.slug}-brand-identity-suite`, extraDownloads: assets.generatedImages.moodboard ? [imageDownload('Download Gemini Moodboard PNG', `${product.slug}-brand-moodboard.png`, assets.generatedImages.moodboard)] : [] }),
     logo_pack: logoArtifact(product, brand, assets, logoGuideHtml),
     product_summary: richDocArtifact({ title: `${product.name} Product Summary`, category: 'Product narrative', summary: `${product.name} positioning, commercial promise, and buyer-facing summary in one clean page.`, html: simpleDocHtml(`${product.name} Product Summary`, htmlList([
@@ -41,8 +41,8 @@ export function buildDeliverableMap(product, brand, strategy, campaignPlan, asse
     blog_briefs: richDocArtifact({ title: `${product.name} Blog Briefs`, category: 'Content', summary: 'Two board-grade content briefs aligned to demand capture and trust building.', html: buildBlogHtml(product, brand, assets), filenameBase: `${product.slug}-blog-briefs` }),
     social_posts: richDocArtifact({ title: `${product.name} Social Content Pack`, category: 'Content', summary: 'Formatted posts with hashtags, creative direction, and CTA guidance.', html: socialHtml, filenameBase: `${product.slug}-social-content-pack`, extraDownloads: socialVariantDownloads(product, assets), previewHtml: `<div class="preview-stack"><div class="preview-kicker">Content</div><h3>${escapeHtml(product.name)} Social Content Pack</h3><p>Formatted posts with hashtags, creative direction, CTA guidance, and image variants for testing.</p>${assets.generatedImages.social ? `<img src="${dataUri(assets.generatedImages.social)}" alt="${escapeHtml(product.name)} social creative" style="width:100%;border-radius:18px;border:1px solid rgba(148,163,184,0.18);margin-top:12px" />` : ''}<p>${escapeHtml(`${assets.generatedImages.socialVariants?.length || 0} social image variant(s) ready.`)}</p></div>` }),
     email_sequence: richDocArtifact({ title: `${product.name} Email Sequence`, category: 'Content', summary: 'Three polished lifecycle emails with subject, purpose, and message body.', html: emailHtml, filenameBase: `${product.slug}-email-sequence` }),
-    landing_page_copy: richDocArtifact({ title: `${product.name} Landing Page Copy`, category: 'Content', summary: 'Premium landing page copy blocks with proof-first structure.', html: landingHtml, filenameBase: `${product.slug}-landing-page-copy` }),
-    cro_recommendations: richDocArtifact({ title: `${product.name} CRO Recommendations`, category: 'Optimization', summary: 'Highest-leverage friction fixes and experiment list in CEO-readable format.', html: buildCroHtml(product, brand, strategy), filenameBase: `${product.slug}-cro-recommendations` }),
+    landing_page_copy: richDocArtifact({ title: `${product.name} Landing Page Copy`, category: 'Content', summary: 'Landing page copy built around proof, buyer clarity, and one strong next step.', html: landingHtml, filenameBase: `${product.slug}-landing-page-copy` }),
+    cro_recommendations: richDocArtifact({ title: `${product.name} CRO Recommendations`, category: 'Optimization', summary: 'The sharpest friction fixes and experiment list in an executive-readable format.', html: buildCroHtml(product, brand, strategy), filenameBase: `${product.slug}-cro-recommendations` }),
     analytics_plan: richDocArtifact({ title: `${product.name} Analytics Plan`, category: 'Measurement', summary: 'North-star metric, scorecard, and reporting rhythm for leadership.', html: analyticsHtml, filenameBase: `${product.slug}-analytics-plan` }),
     social_posting_plan: richDocArtifact({ title: `${product.name} Social Posting Plan`, category: 'Execution', summary: 'Cadence, mix, and operating rhythm for social distribution.', html: buildPostingPlanHtml(product, brand, assets), filenameBase: `${product.slug}-social-posting-plan` }),
     content_backlog: richDocArtifact({ title: `${product.name} Content Backlog`, category: 'Execution', summary: 'Prioritized content backlog in a presentable planning format.', html: backlogHtml, filenameBase: `${product.slug}-content-backlog` }),
@@ -127,7 +127,7 @@ export function logoArtifact(product, brand, assets, logoGuideHtml) {
 
 export function buildCeoReportHtml(product, brand, strategy, campaignPlan, assets) {
   const topCompetitor = strategy.competitor.competitors[0];
-  return composeDoc(`${product.name} CEO Growth Brief`, brand, `Board-ready report for ${product.name}`, `Prepared as a strategy pack for ${product.audience}.`, [
+  return composeDoc(`${product.name} CEO Growth Brief`, brand, `Executive-ready report for ${product.name}`, `Built for ${product.audience}.`, [
     metricGrid([
       ['Category', product.category],
       ['Audience', product.audience],
@@ -137,9 +137,9 @@ export function buildCeoReportHtml(product, brand, strategy, campaignPlan, asset
     section('Executive summary', `<p>${brand.promise}</p><ul>${listItems([
       strategy.positioningStatement,
       `Brand vision: ${brand.vision}`,
-      `Best immediate demand motion: ${strategy.gtmMotion}.`,
-      `Highest-leverage channel: ${strategy.channelPriorities[0].channel}.`,
-      `First strategic experiment: ${strategy.cro.experiments[0].name}.`,
+      `Primary demand motion: ${strategy.gtmMotion}.`,
+      `First channel to lean into: ${strategy.channelPriorities[0].channel}.`,
+      `First experiment to run: ${strategy.cro.experiments[0].name}.`,
     ])}</ul>`),
     section('Brand positioning and vision', twoCol([
       card('Positioning core', `<p>${escapeHtml(brand.positioningCore)}</p><p><strong>Market position:</strong> ${escapeHtml(strategy.marketPositioning)}</p>`),
@@ -399,7 +399,7 @@ export function buildDraftQueueHtml(product, brand, assets) {
 }
 
 export function buildContentPrompt(product, brand, strategy, assets) {
-  return `Create a premium marketing pack for ${product.name}.\n\nBrand:\n- Tagline: ${brand.tagline}\n- Promise: ${brand.promise}\n- Vision: ${brand.vision}\n- Positioning core: ${brand.positioningCore}\n- Voice: ${brand.voicePillars.join(', ')}\n\nProduct:\n- Category: ${product.category}\n- Audience: ${product.audience}\n- Problem solved: ${product.problem}\n- Messaging pillars: ${product.messagingPillars.join(', ')}\n\nStrategy:\n- STP positioning: ${strategy.stp.positioning}\n- Market position: ${strategy.marketPositioning}\n- GTM motion: ${strategy.gtmMotion}\n- Themes: ${strategy.campaignThemes.join(', ')}\n- Competitor weak spots: ${strategy.competitor.differentiationAngles.join(', ')}\n\nNeed:\n1. Three polished social posts with hashtags and matching image prompts\n2. One hero section rewrite\n3. One sales email\n4. One SEO/blog angle\n5. One proof-first CTA recommendation\n6. One concise competition insight\n\nConstraints:\n- Premium, credible, commercially literate\n- No empty hype\n- Use proof language and clear next actions\n- Make outputs board-safe and founder-usable\n\nReference hashtags: ${assets.hashtags.join(' ')}\nPreferred image workflow: ${assets.imageProvider.label}\nLogo prompt: ${assets.logoPrompt}\n`;
+  return `Create a sharp marketing pack for ${product.name}.\n\nBrand:\n- Tagline: ${brand.tagline}\n- Promise: ${brand.promise}\n- Vision: ${brand.vision}\n- Positioning core: ${brand.positioningCore}\n- Voice: ${brand.voicePillars.join(', ')}\n\nProduct:\n- Category: ${product.category}\n- Audience: ${product.audience}\n- Problem solved: ${product.problem}\n- Messaging pillars: ${product.messagingPillars.join(', ')}\n\nStrategy:\n- STP positioning: ${strategy.stp.positioning}\n- Market position: ${strategy.marketPositioning}\n- GTM motion: ${strategy.gtmMotion}\n- Themes: ${strategy.campaignThemes.join(', ')}\n- Competitor weak spots: ${strategy.competitor.differentiationAngles.join(', ')}\n\nNeed:\n1. Three polished social posts with hashtags and matching image prompts\n2. One hero section rewrite\n3. One sales email\n4. One SEO/blog angle\n5. One proof-first CTA recommendation\n6. One concise competition insight\n\nConstraints:\n- Expensive, direct, and commercially fluent\n- No empty hype\n- Use proof language and clear next actions\n- Make outputs safe for founders to send internally\n\nReference hashtags: ${assets.hashtags.join(' ')}\nPreferred image workflow: ${assets.imageProvider.label}\nLogo prompt: ${assets.logoPrompt}\n`;
 }
 
 
