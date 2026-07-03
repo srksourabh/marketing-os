@@ -7,9 +7,20 @@ export async function buildAssets(product, brand, strategy, campaignPlan, imageP
   const iconSvg = buildIconSvg(product, brand);
   const hashtags = buildHashtags(product);
   const fashion = isFashionProduct(product);
+  const contextHaystack = `${product.category} ${product.problem} ${product.description || ''} ${brand.positioningCore} ${brand.vision}`.toLowerCase();
+  const defaultDirection = /(clinic|medical|health|patient|hospital|doctor|care)/.test(contextHaystack)
+    ? 'calm trust, modern healthcare coordination, rounded geometry, clean clinical precision'
+    : /(finance|fintech|payments|bank|billing|invoice|accounting)/.test(contextHaystack)
+      ? 'financial trust, precision, secure flow, structured geometry'
+      : /(developer|api|engineering|devops|infrastructure|workflow|automation|saas|software)/.test(contextHaystack)
+        ? 'modern software brand, modular precision, workflow motion, strong silhouette'
+        : 'premium modern identity, clear silhouette, balanced geometry, category-native symbolism';
+  const categoryAvoid = /(clinic|medical|health|patient|hospital|doctor|care)/.test(contextHaystack)
+    ? 'Avoid fashion ornament, jewelry cues, mascots, and luxury crests.'
+    : 'Avoid unrelated motifs, random mascots, readable words, and literal clip-art.';
   const logoPrompt = fashion
     ? `${imageProvider.label}: create a premium emblem logo concept for ${product.name}. Symbol only, no words, no letters, no typography. Draw from silk weave, drape flow, zari detail, heritage luxury, and refined Indian occasionwear. Use elegant geometry, rich contrast, and premium restraint. Palette anchor: ${brand.colors.map((c) => c.hex).join(', ')}. Brand positioning: ${brand.positioningCore}.`
-    : `${imageProvider.label}: create a premium logo for ${product.name}. Symbol-first concept, avoid readable words or letters, no watermark. Style: dark-luxury minimalism, geometric mark, high contrast. Brand positioning: ${brand.positioningCore}. Brand vision: ${brand.vision}. Palette anchor: ${brand.colors.map((c) => c.hex).join(', ')}.`;
+    : `${imageProvider.label}: create a category-native brand symbol for ${product.name}. Symbol only, no readable words, no letters, no typography, no watermark, no mockup. Product category: ${product.category}. Product problem: ${product.problem}. Style direction: ${defaultDirection}. Brand positioning: ${brand.positioningCore}. Brand vision: ${brand.vision}. Palette anchor: ${brand.colors.map((c) => c.hex).join(', ')}. ${categoryAvoid} Plain neutral background.`;
   const moodboardPrompt = fashion
     ? `${imageProvider.label}: create a 4-panel brand moodboard for ${product.name} showing silk texture, drape movement, festive styling cues, premium packaging, and aspirational occasionwear art direction. Audience: ${product.audience}. Market position: ${strategy.marketPositioning}.`
     : `${imageProvider.label}: create a 4-panel brand moodboard for ${product.name} showing interface cues, product-world textures, premium color palette, and buyer aspiration. Audience: ${product.audience}. Market position: ${strategy.marketPositioning}.`;

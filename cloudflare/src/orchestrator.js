@@ -105,9 +105,9 @@ function buildVariableMap({ productName, productDescription, artifacts, knownCom
     content_backlog_json: artifacts.content_backlog || '',
     social_posting_plan_json: artifacts.social_posting_plan || '',
     execution_backlog_json: artifacts.execution_backlog || '',
-    known_competitors: knownCompetitors || '',
-    constraints: constraints || '',
-    voice_of_customer_raw: vocRaw || '',
+    known_competitors: knownCompetitors?.trim() || 'NONE_PROVIDED — infer the most likely competitors from the category and include the status quo/manual process.',
+    constraints: constraints?.trim() || 'NO_ADDITIONAL_CONSTRAINTS_PROVIDED — assume lean team, modest budget, and a 90-day execution horizon exactly as the prompt instructs.',
+    voice_of_customer_raw: vocRaw?.trim() || 'NO_VOC_PROVIDED — derive hypotheses from the ICP and market research, set data_status to HYPOTHESIS_ONLY, and populate validation_plan.',
     start_date: startDate || new Date().toISOString().slice(0, 10),
     timezone: timezone || 'Asia/Kolkata',
     brief_count: '3',
@@ -188,6 +188,40 @@ const FAILURE_TOKENS = new Set([
   'EMPTY_INPUT',
 ]);
 
+const REQUIRED_JSON_KEYS = {
+  product_summary: ['one_liner', 'category', 'core_problem', 'job_to_be_done', 'key_capabilities', 'primary_outcome', 'product_type', 'assumptions'],
+  brand_context: ['positioning_statement', 'positioning_approach', 'positioning_rationale', 'frame_of_reference', 'differentiators', 'brand_promise', 'emotional_territory', 'reasons_to_believe', 'assumptions'],
+  brand_voice: ['voice_summary', 'traits', 'vocabulary', 'sentence_rules', 'tone_shifts'],
+  icp: ['primary_segment', 'secondary_segment', 'disqualifiers', 'watering_holes', 'assumptions'],
+  customer_insights: ['data_status', 'four_forces', 'sticky_phrases', 'moments_of_struggle', 'desired_outcomes', 'validation_plan'],
+  channel_priorities: ['scored_channels', 'primary_plays', 'test_play', 'sequencing_note'],
+  analytics_plan: ['north_star', 'supporting_metrics', 'utm_convention', 'events_to_track', 'dashboard_spec', 'setup_checklist', 'diagnostic_only'],
+  seo_brief: ['seo_thesis', 'pillars', 'quick_wins', 'internal_linking_rule', 'validation_note', 'technical_basics'],
+  blog_briefs: [],
+  social_posts: [],
+  email_sequence: ['sequence_name', 'sequence_type', 'entry_trigger', 'exit_condition', 'emails', 'ab_test_suggestion'],
+  cro_recommendations: ['heuristic_scores', 'pre_launch_fixes', 'measurement_note'],
+  social_posting_plan: [],
+  content_backlog: [],
+  execution_backlog: [],
+  draft_queue: ['queue', 'queue_stats'],
+  cron_manifest: ['machine_jobs', 'human_rituals', 'escalation_rule'],
+};
+
+const REQUIRED_MD_H2 = {
+  market_research: ['## Market Definition', '## Market Size', '## Demand Signals', '## Market Dynamics', '## Buyer Behavior', '## Whitespace', '## Sources and Gaps'],
+  competitor_intel: ['## Competitive Set', '## Battlecards', '## Positioning Whitespace', '## Recommended Counter-Positioning'],
+  gtm_strategy: ['## Strategic Bet', '## Beachhead', '## Core Message', '## Motion and Funnel', '## 90-Day Sequence', '## Budget Allocation', '## Kill Criteria', '## Risks and Assumptions'],
+  campaign_plan: ['## Campaign Concept', '## Audience and Offer', '## Message Architecture', '## Deliverables', '## Week-by-Week Rhythm', '## Success Metrics', '## Contingency'],
+  landing_page_copy: ['## Hero', '## Problem agitation', '## Solution intro', '## How it works', '## Proof/objection handling', '## Secondary benefits', '## Final CTA', '## FAQ'],
+};
+
+function assertNonEmptyValue(value, path) {
+  if (value === null || value === undefined) throw new Error(`Missing required value at ${path}`);
+  if (typeof value === 'string' && !value.trim()) throw new Error(`Empty required string at ${path}`);
+  if (Array.isArray(value) && value.length === 0) throw new Error(`Empty required array at ${path}`);
+}
+
 function isFailureToken(output) {
   if (!output) return false;
   const cleaned = output.trim().replace(/^["'{}\s]+|["'{}\s]+$/g, '');
@@ -201,18 +235,29 @@ function isFailureToken(output) {
   return false;
 }
 
-function validateOutput(output, outputFormat) {
+function validateOutput(nodeId, output, outputFormat) {
   // Failure tokens are valid structured responses — skip format validation
   if (isFailureToken(output)) return true;
 
   if (outputFormat === 'json') {
-    JSON.parse(output); // throws on invalid JSON
+    const parsed = JSON.parse(output); // throws on invalid JSON
+    const requiredKeys = REQUIRED_JSON_KEYS[nodeId] || [];
+    for (const key of requiredKeys) {
+      if (!(key in parsed)) throw new Error(`Missing required key: ${key}`);
+      assertNonEmptyValue(parsed[key], key);
+    }
     return true;
   }
   if (outputFormat === 'markdown') {
-    // Accept any heading level (# ## ### etc) or structured content
-    if (!output.includes('#') && output.length < 50) {
-      throw new Error('Markdown output missing expected headings');
+    const requiredSections = REQUIRED_MD_H2[nodeId] || [];
+    if (!requiredSections.length) {
+      if (!output.includes('#') && output.length < 120) {
+        throw new Error('Markdown output missing expected structure');
+      }
+      return true;
+    }
+    for (const section of requiredSections) {
+      if (!output.includes(section)) throw new Error(`Markdown output missing required section: ${section}`);
     }
     return true;
   }
@@ -230,9 +275,48 @@ function temperatureForLayer(layer) {
   return 0.2;
 }
 
-/* ------------------------------------------------------------------ */
-/*  Main DAG runner (async generator)                                 */
-/* ------------------------------------------------------------------ */
+function deriveLogoDirection({ category = '', productDescription = '', emotionalTerritory = '', differentiators = [] }) {
+  const haystack = `${category} ${productDescription} ${emotionalTerritory} ${differentiators.join(' ')}`.toLowerCase();
+
+  if (/(clinic|medical|health|patient|hospital|doctor|care)/.test(haystack)) {
+    return {
+      style: 'calm trust, clinical precision, modern healthcare software, rounded geometry, clean spacing',
+      motifs: ['appointment flow', 'calendar rhythm', 'care pathway', 'signal pulse', 'structured coordination'],
+      avoid: ['fashion ornament', 'jewelry cues', 'gaming motifs', 'aggressive flames', 'luxury crests'],
+      background: 'plain light neutral background',
+    };
+  }
+  if (/(finance|fintech|payments|bank|billing|invoice|accounting)/.test(haystack)) {
+    return {
+      style: 'financial trust, precision, structured motion, modern infrastructure, crisp geometry',
+      motifs: ['ledger grid', 'signal bars', 'secure flow', 'stable upward motion'],
+      avoid: ['medical crosses', 'fashion flourishes', 'playful mascots'],
+      background: 'plain light neutral background',
+    };
+  }
+  if (/(fashion|apparel|jewelry|luxury|beauty|cosmetic|saree|wedding)/.test(haystack)) {
+    return {
+      style: 'editorial elegance, premium restraint, refined silhouette, high-end fashion identity',
+      motifs: ['drape line', 'woven detail', 'gem facet', 'ornamental geometry'],
+      avoid: ['medical symbols', 'dashboard charts', 'tech circuit motifs'],
+      background: 'plain dark editorial background',
+    };
+  }
+  if (/(developer|api|engineering|devops|infrastructure|workflow|automation|saas|software)/.test(haystack)) {
+    return {
+      style: 'modern software brand, modular precision, confident simplicity, strong silhouette',
+      motifs: ['connected nodes', 'modular blocks', 'workflow loop', 'signal path'],
+      avoid: ['fashion crests', 'healthcare cross', 'organic leaf marks unless product is sustainability-related'],
+      background: 'plain neutral background',
+    };
+  }
+  return {
+    style: 'minimal modern brand system, clear silhouette, balanced geometry, premium restraint',
+    motifs: ['abstract differentiator cue', 'simple geometric motion', 'recognizable symbol'],
+    avoid: ['literal clip-art', 'random mascots', 'ornamental crests unrelated to the category'],
+    background: 'plain neutral background',
+  };
+}
 
 export async function* runDAG({
   selectedNodes,
@@ -286,6 +370,8 @@ export async function* runDAG({
 
     const temperature = temperatureForLayer(layer);
     const maxTokens = MAX_TOKENS_BY_LAYER[layer] || 4096;
+    const shouldUseSearchGrounding = provider === 'gemini' && ['market_research', 'competitor_intel'].includes(nodeId);
+    const tools = shouldUseSearchGrounding ? [{ type: 'google_search' }] : [];
 
     // 4. Call LLM (with one retry — second attempt adds anti-fence instruction)
     let output = null;
@@ -296,7 +382,7 @@ export async function* runDAG({
         const callTemp = attempt === 0 ? temperature : 0;
         // On retry, prepend a strong instruction to avoid code fences
         const retryPrefix = attempt > 0
-          ? 'CRITICAL: Output ONLY raw content. No markdown code fences (```), no preamble, no commentary. If JSON, start with { or [. If markdown, start with #.\n\n'
+          ? `CRITICAL: Output ONLY raw content. No markdown code fences (\`\`\`), no preamble, no commentary. If JSON, start with { or [. If markdown, start with #. Fix the exact previous validation issue: ${lastError?.message || 'invalid structure'}. Complete every required section and key.\n\n`
           : '';
         const llmResponse = await callLLM({
           provider,
@@ -306,6 +392,7 @@ export async function* runDAG({
           userPrompt: retryPrefix + userPrompt,
           temperature: callTemp,
           maxTokens,
+          tools,
         });
 
         // Extract text from {text, usage} response
@@ -317,7 +404,7 @@ export async function* runDAG({
         }
 
         // 5. Validate
-        validateOutput(output, outputFormat);
+        validateOutput(nodeId, output, outputFormat);
 
         // Validation passed – break out of retry loop
         lastError = null;
@@ -352,12 +439,19 @@ export async function* runDAG({
         try { productData = JSON.parse(artifacts.product_summary); } catch { /* skip */ }
 
         const brandName = productName;
-        const positioning = brandData.positioning_statement || brandData.brand_promise || productDescription;
         const category = productData.category || '';
+        const emotionalTerritory = brandData.emotional_territory || '';
+        const differentiators = Array.isArray(brandData.differentiators) ? brandData.differentiators : [];
+        const direction = deriveLogoDirection({
+          category,
+          productDescription,
+          emotionalTerritory,
+          differentiators,
+        });
 
-        // Build logo prompt
-        const logoPrompt = `Create a premium logo concept for "${brandName}". Symbol only, no words, no letters, no typography, no text. Style: dark-luxury minimalism, geometric mark, high contrast. Category: ${category}. Brand positioning: ${positioning}. Clean isolated design on dark background.`;
-        const iconPrompt = `Create a minimal app icon / favicon for "${brandName}". Abstract geometric symbol, no text, no letters. Single clean shape. Bold and recognizable at 64x64px. Dark luxury style.`;
+        // Build category-aware logo prompts
+        const logoPrompt = `Design a brand symbol for ${brandName}. Symbol only. No words, no letters, no typography, no monogram text, no watermark, no mockup. The symbol must feel native to this category: ${category || 'the product category described below'}. Product description: ${productDescription}. Positioning: ${brandData.positioning_statement || productDescription}. Emotional territory: ${emotionalTerritory || 'clear confidence'}. Differentiators: ${differentiators.join('; ') || 'none explicitly provided'}. Style direction: ${direction.style}. Useful motif territory: ${direction.motifs.join(', ')}. Avoid: ${direction.avoid.join(', ')}. Output one clean isolated symbol on a ${direction.background}.`;
+        const iconPrompt = `Design a compact app icon for ${brandName}. Abstract category-relevant symbol only, no text, no letters, no typography. It must stay recognizable at 64x64 pixels. Product description: ${productDescription}. Category: ${category}. Emotional territory: ${emotionalTerritory || 'clear confidence'}. Style direction: ${direction.style}. Useful motif territory: ${direction.motifs.join(', ')}. Avoid: ${direction.avoid.join(', ')}. Output one centered symbol on a ${direction.background}.`;
 
         const generator = imageConfig.provider === 'openai'
           ? (p) => generateOpenAiImage(imageConfig.apiKey, p)

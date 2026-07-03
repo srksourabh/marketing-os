@@ -68,20 +68,21 @@ export async function callLLM({
   userPrompt,
   temperature = 0.7,
   maxTokens = 4096,
+  tools = [],
 }) {
   const resolvedModel = model || defaultModel(provider);
 
   if (provider === 'anthropic') {
-    return callAnthropic({ apiKey, model: resolvedModel, systemPrompt, userPrompt, temperature, maxTokens });
+    return callAnthropic({ apiKey, model: resolvedModel, systemPrompt, userPrompt, temperature, maxTokens, tools });
   }
   if (provider === 'openai') {
-    return callOpenAI({ apiKey, model: resolvedModel, systemPrompt, userPrompt, temperature, maxTokens });
+    return callOpenAI({ apiKey, model: resolvedModel, systemPrompt, userPrompt, temperature, maxTokens, tools });
   }
   if (provider === 'gemini') {
-    return callGemini({ apiKey, model: resolvedModel, systemPrompt, userPrompt, temperature, maxTokens });
+    return callGemini({ apiKey, model: resolvedModel, systemPrompt, userPrompt, temperature, maxTokens, tools });
   }
   if (provider === 'openrouter') {
-    return callOpenRouter({ apiKey, model: resolvedModel, systemPrompt, userPrompt, temperature, maxTokens });
+    return callOpenRouter({ apiKey, model: resolvedModel, systemPrompt, userPrompt, temperature, maxTokens, tools });
   }
 
   throw new Error(`Unsupported LLM provider: ${provider}. Use anthropic, openai, gemini, or openrouter.`);
@@ -162,7 +163,7 @@ async function callOpenAI({ apiKey, model, systemPrompt, userPrompt, temperature
   };
 }
 
-async function callGemini({ apiKey, model, systemPrompt, userPrompt, temperature, maxTokens }) {
+async function callGemini({ apiKey, model, systemPrompt, userPrompt, temperature, maxTokens, tools = [] }) {
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
   const body = {
     systemInstruction: systemPrompt ? { parts: [{ text: systemPrompt }] } : undefined,
@@ -171,6 +172,7 @@ async function callGemini({ apiKey, model, systemPrompt, userPrompt, temperature
       temperature,
       maxOutputTokens: maxTokens,
     },
+    tools: tools.length ? tools : undefined,
   };
 
   const res = await fetch(url, {
