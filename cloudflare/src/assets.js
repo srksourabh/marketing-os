@@ -1,7 +1,12 @@
-import { primaryCta, northStarMetric, buildHashtags, isFashionProduct } from './strategy.js';
+import { primaryCta, northStarMetric, buildHashtags, isFashionProduct, problemNeedStatement } from './strategy.js';
 import { escapeHtml } from './utils.js';
 
-export async function buildAssets(product, brand, strategy, campaignPlan, imageProvider, imageRuntime) {
+export async function buildAssets(product, brand, strategy, campaignPlan, imageProvider, imageRuntime, selectedItems = []) {
+  const selected = new Set(Array.isArray(selectedItems) ? selectedItems : []);
+  const needsLogoImages = ['logo_pack', 'brand_identity_suite', 'master_board_pack', 'full_pack_bundle'].some((id) => selected.has(id));
+  const needsSocialImages = ['social_posts', 'master_board_pack', 'full_pack_bundle'].some((id) => selected.has(id));
+  const needsMoodboard = ['brand_identity_suite', 'master_board_pack', 'full_pack_bundle'].some((id) => selected.has(id));
+  const problemNeed = problemNeedStatement(product.problem);
   const socialChannel = strategy.channelPriorities[0]?.channel || 'linkedin';
   const logoSvg = buildLogoSvg(product, brand);
   const iconSvg = buildIconSvg(product, brand);
@@ -27,15 +32,20 @@ export async function buildAssets(product, brand, strategy, campaignPlan, imageP
   const socialCreativePrompt = fashion
     ? `${imageProvider.label}: create a premium ${socialChannel} social creative for ${product.name}. No random English text. Focus on silk texture, elegant folds, festive luxury, premium product framing, rich color depth, and clean composition for fashion discovery.`
     : `${imageProvider.label}: create a premium ${socialChannel} social creative for ${product.name}. No random English text. Focus on product value, premium editorial composition, abstract proof cues, premium typography space, and brand palette ${brand.colors.map((c) => c.hex).join(', ')}.`;
-  const logoVariantPrompts = [
+  const logoVariantPrompts = needsLogoImages ? [
     `${logoPrompt} Variant direction: iconic monogram-first symbol for favicon, app icon, and avatar use.`,
-    `${logoPrompt} Variant direction: geometric editorial emblem with a more luxurious silhouette.`,
-  ];
-  const socialVariantPrompts = [
+  ] : [];
+  const socialVariantPrompts = needsSocialImages ? [
     `${socialCreativePrompt} Variant direction: bold single-image hero with one focal product frame.`,
-    `${socialCreativePrompt} Variant direction: premium editorial card with contrast, texture, and gifting cues.`,
-  ];
-  const generatedImages = await generateVisualAssets({ product, logoPrompt, moodboardPrompt, socialCreativePrompt, logoVariantPrompts, socialVariantPrompts, imageRuntime, imageProvider });
+  ] : [];
+  const generatedImages = await generateVisualAssets({
+    product,
+    moodboardPrompt: needsMoodboard ? moodboardPrompt : '',
+    logoVariantPrompts,
+    socialVariantPrompts,
+    imageRuntime,
+    imageProvider,
+  });
 
   const socialPosts = fashion ? [
     {
@@ -73,7 +83,7 @@ export async function buildAssets(product, brand, strategy, campaignPlan, imageP
       id: 'social-1',
       channel: socialChannel,
       hook: `Most teams do not have a lead problem. They have a trust-to-conversion problem.`,
-      body: `${product.name} helps ${product.audience} solve ${product.problem} without adding more operational drag. The positioning move is simple: stop listing features and start proving commercial outcomes.`,
+      body: `${product.name} helps ${product.audience} get ${problemNeed} without adding more operational drag. The positioning move is simple: stop listing features and start proving commercial outcomes.`,
       cta: primaryCta(product.businessModel),
       hashtags,
       creativeDirection: 'Dark premium card with one proof statistic and one brutal buying truth.',
@@ -247,8 +257,8 @@ export function detectImageProvider(imageRuntime = {}) {
   return { key: 'prompt-only', label: 'Nano/Banana/OpenAI/Gemini-ready prompt pack', ready: false, source: 'prompt-only', byok: false };
 }
 
-export async function generateVisualAssets({ product, logoPrompt, moodboardPrompt, socialCreativePrompt, logoVariantPrompts = [], socialVariantPrompts = [], imageRuntime, imageProvider }) {
-  if (!imageRuntime?.ready || !imageRuntime?.apiKey) {
+export async function generateVisualAssets({ product, moodboardPrompt, logoVariantPrompts = [], socialVariantPrompts = [], imageRuntime, imageProvider }) {
+  if (!imageRuntime?.ready || !imageRuntime?.apiKey || (!moodboardPrompt && !logoVariantPrompts.length && !socialVariantPrompts.length)) {
     return { logo: null, moodboard: null, social: null, logoVariants: [], socialVariants: [], provider: imageProvider.key, source: imageProvider.source };
   }
 
@@ -256,18 +266,20 @@ export async function generateVisualAssets({ product, logoPrompt, moodboardPromp
     ? (prompt) => generateOpenAiImage(imageRuntime.apiKey, prompt)
     : (prompt) => generateGeminiImage(imageRuntime.apiKey, prompt);
 
-  const [moodboard, ...variantResults] = await Promise.allSettled([
-    generator(moodboardPrompt),
+  const jobs = [
+    ...(moodboardPrompt ? [generator(moodboardPrompt)] : []),
     ...logoVariantPrompts.map((prompt) => generator(prompt)),
     ...socialVariantPrompts.map((prompt) => generator(prompt)),
-  ]);
+  ];
+  const [maybeMoodboard, ...variantResults] = await Promise.allSettled(jobs);
+  const moodboard = moodboardPrompt ? maybeMoodboard : null;
 
   const logoVariants = variantResults.slice(0, logoVariantPrompts.length).filter((item) => item.status === 'fulfilled').map((item) => item.value);
   const socialVariants = variantResults.slice(logoVariantPrompts.length).filter((item) => item.status === 'fulfilled').map((item) => item.value);
 
   return {
     logo: logoVariants[0] || null,
-    moodboard: moodboard.status === 'fulfilled' ? moodboard.value : null,
+    moodboard: moodboard?.status === 'fulfilled' ? moodboard.value : null,
     social: socialVariants[0] || null,
     logoVariants,
     socialVariants,

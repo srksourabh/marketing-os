@@ -9,6 +9,7 @@ export async function buildExperience(payload, env) {
   const description = String(payload.description || '').trim();
   const objective = String(payload.objective || 'Create a premium brand system and a board-ready marketing growth pack').trim();
   const requestedItems = Array.isArray(payload.selected_items) ? payload.selected_items : [];
+  const requestedValidItems = requestedItems.filter((item) => OPTION_INDEX[item]);
   const selectedItems = normalizeSelectedItems(requestedItems);
   const imageRuntime = resolveImageGenerationConfig(payload, env);
   const imageProvider = detectImageProvider(imageRuntime);
@@ -21,10 +22,11 @@ export async function buildExperience(payload, env) {
   const brand = buildBrandSystem(product);
   const strategy = buildStrategy(product, brand);
   const campaignPlan = buildCampaignPlan(product, objective);
-  const assets = await buildAssets(product, brand, strategy, campaignPlan, imageProvider, imageRuntime);
+  const assets = await buildAssets(product, brand, strategy, campaignPlan, imageProvider, imageRuntime, requestedValidItems);
   const deliverableMap = buildDeliverableMap(product, brand, strategy, campaignPlan, assets);
 
-  const selectedOutputs = selectedItems.map((itemId) => {
+  const responseItems = requestedValidItems.length ? requestedValidItems : selectedItems;
+  const selectedOutputs = responseItems.map((itemId) => {
     const artifact = deliverableMap[itemId];
     return {
       id: itemId,

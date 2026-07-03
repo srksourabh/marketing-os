@@ -127,7 +127,7 @@ export function logoArtifact(product, brand, assets, logoGuideHtml) {
 
 export function buildCeoReportHtml(product, brand, strategy, campaignPlan, assets) {
   const topCompetitor = strategy.competitor.competitors[0];
-  return composeDoc(`${product.name} CEO Growth Brief`, brand, `Board-ready report for ${product.name}`, `Prepared as a deterministic strategy pack for ${product.audience}.`, [
+  return composeDoc(`${product.name} CEO Growth Brief`, brand, `Board-ready report for ${product.name}`, `Prepared as a strategy pack for ${product.audience}.`, [
     metricGrid([
       ['Category', product.category],
       ['Audience', product.audience],

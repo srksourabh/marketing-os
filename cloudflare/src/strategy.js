@@ -3,8 +3,8 @@ import { initials, slugify } from './utils.js';
 export function inferProduct(name, description) {
   const brief = description.trim();
   const category = inferCategory(brief);
-  const problem = inferProblem(brief);
-  const audience = inferAudience(brief);
+  const problem = inferProblem(name, brief, category);
+  const audience = inferAudience(name, brief, category);
   const businessModel = inferBusinessModel(brief, category);
   const channels = inferChannels(brief, businessModel);
   const differentiators = inferDifferentiators(brief, category);
@@ -37,9 +37,11 @@ export function buildBrandSystem(product) {
   const archetype = inferArchetype(product);
   const tagline = buildTagline(product);
   const fashion = isFashionProduct(product);
+  const problem = problemStatement(product.problem);
+  const problemNeed = problemNeedStatement(product.problem);
   const positioningCore = fashion
-    ? `${product.name} is the premium ${product.category} label for ${product.audience}, bringing ${product.problem} together with craftsmanship, cultural richness, and elevated styling confidence.`
-    : `${product.name} is the premium ${product.category} brand for ${product.audience} who need ${product.problem} solved with proof, speed, and operational confidence.`;
+    ? `${product.name} is the premium ${product.category} label for ${product.audience}, bringing ${problem} together with craftsmanship, cultural richness, and elevated styling confidence.`
+    : `${product.name} is the premium ${product.category} brand for ${product.audience} who want ${problemNeed} with proof, speed, and operational confidence.`;
   const brandVoice = fashion
     ? [
       'elegant without sounding distant',
@@ -57,14 +59,14 @@ export function buildBrandSystem(product) {
     archetype,
     tagline,
     promise: fashion
-      ? `${product.name} helps ${product.audience} find ${product.problem} with greater confidence in quality, beauty, and occasion-fit.`
-      : `${product.name} helps ${product.audience} solve ${product.problem} with less friction and more control.`,
+      ? `${product.name} helps ${product.audience} find ${problem} with greater confidence in quality, beauty, and occasion-fit.`
+      : `${product.name} helps ${product.audience} get ${problemNeed} with less friction and more control.`,
     essence: fashion
       ? `${product.category} built on authenticity, elegance, and occasion-ready confidence.`
       : `${product.category} growth system built for credibility and measurable outcomes.`,
     vision: fashion
       ? `Become the most trusted ${product.category} for ${product.audience}, known for authentic craftsmanship, refined styling, and heirloom-worthy appeal.`
-      : `Become the most trusted ${product.category} growth platform for ${product.audience}, known for turning ${product.problem} into an operating advantage.`,
+      : `Become the most trusted ${product.category} growth platform for ${product.audience}, known for delivering ${problemNeed} as an operating advantage.`,
     mission: fashion
       ? `Help ${product.audience} discover beautifully crafted pieces that feel timeless, premium, and deeply wearable.`
       : `Give ${product.audience} a cleaner, faster, and more commercially reliable way to win.`,
@@ -94,17 +96,19 @@ export function buildStrategy(product, brand) {
   const competitor = competitorIntel(product);
   const market = marketResearch(product);
   const cro = croInsights();
+  const problem = problemStatement(product.problem);
+  const problemNeed = problemNeedStatement(product.problem);
   const stp = {
     segmentation: [
-      `${product.audience} with acute pain around ${product.problem}`,
+      `${product.audience} with acute pain around ${problem}`,
       `mid-market buyers prioritizing proof, speed, and ROI visibility`,
       `teams replacing fragmented manual workflows`,
     ],
-    targeting: `Prioritize ${product.audience} that already feel the cost of ${product.problem} and can buy on commercial logic, not curiosity.`,
+    targeting: `Prioritize ${product.audience} that already feel the cost of missing ${problemNeed} and can buy on commercial logic, not curiosity.`,
     positioning: brand.positioningCore,
   };
   return {
-    positioningStatement: `${product.name} is the ${product.category} choice for ${product.audience} that need ${product.problem} solved without adding operational drag.`,
+    positioningStatement: `${product.name} is the ${product.category} choice for ${product.audience} that want ${problemNeed} without adding operational drag.`,
     marketPositioning: `${product.name} should occupy the premium, proof-led position between bloated incumbents and underpowered niche tools.`,
     valueProps: product.messagingPillars,
     campaignThemes: ['pain-point clarity', 'proof-led differentiation', 'commercial confidence'],
@@ -397,6 +401,7 @@ export function croInsights() {
 export function inferCategory(brief) {
   const text = brief.toLowerCase();
   if (['silk', 'saree', 'lehenga', 'kurta', 'fashion', 'apparel', 'ethnic wear', 'textile', 'boutique', 'jewelry'].some((word) => text.includes(word))) return 'fashion brand';
+  if (['marketing os', 'marketing operating system', 'go-to-market', 'gtm', 'demand gen', 'content engine', 'brand system', 'campaign planning'].some((word) => text.includes(word))) return 'marketing software';
   if (['software', 'saas', 'crm', 'platform', 'automation'].some((word) => text.includes(word))) return 'software';
   if (['clinic', 'health', 'patient', 'doctor'].some((word) => text.includes(word))) return 'healthcare service';
   if (['course', 'education', 'school', 'student'].some((word) => text.includes(word))) return 'education';
@@ -404,23 +409,49 @@ export function inferCategory(brief) {
   return 'digital product';
 }
 
-export function inferProblem(brief) {
+export function inferProblem(name, brief, category = '') {
   const cleaned = brief.trim().replace(/[.]+$/, '');
   if (!cleaned) return 'an urgent customer problem';
   const lower = cleaned.toLowerCase();
+  if (['marketing os', 'marketing operating system', 'brand identity', 'market research', 'competitor intelligence', 'customer insights', 'gtm strategy', 'social content'].some((word) => lower.includes(word))) {
+    return 'complete, research-backed marketing deliverables from a lightweight product brief';
+  }
+  if ((name || '').toLowerCase().includes('marketing os') || category === 'marketing software') {
+    return 'going from a raw product brief to board-ready marketing strategy and content without manual agency-style overhead';
+  }
   const seeking = cleaned.match(/seeking\s+(.+)$/i);
   if (seeking) return seeking[1].trim().replace(/[.]+$/, '');
-  const need = cleaned.match(/(?:need|needs)\s+(.+)$/i);
+  const need = cleaned.match(/(?:need|needs)\s+([^.;]+)/i);
   if (need) return need[1].trim().replace(/[.]+$/, '');
+  const turns = cleaned.match(/turns?\s+(.+?)\s+into\s+(.+?)(?:[.;]|$)/i);
+  if (turns) return `turning ${turns[1].trim()} into ${turns[2].trim()}`;
   for (const marker of [' to ', ' helps ', ' that ']) {
     const idx = lower.indexOf(marker);
-    if (idx !== -1) return cleaned.slice(idx + marker.length).trim().replace(/[.]+$/, '');
+    if (idx !== -1) {
+      const slice = cleaned.slice(idx + marker.length).trim().replace(/[.]+$/, '');
+      if (marker === ' that ' && slice.split(/\s+/).length > 18) break;
+      return slice;
+    }
   }
   return cleaned;
 }
 
-export function inferAudience(brief) {
+export function problemStatement(problem = '') {
+  const text = String(problem || '').trim().replace(/[.]+$/, '');
+  if (!text) return 'a meaningful business outcome';
+  return text;
+}
+
+export function problemNeedStatement(problem = '') {
+  const text = problemStatement(problem);
+  if (/^(turning|going|reducing|improving|building|creating|gett?ing|moving)\b/i.test(text)) return text;
+  if (/deliverables from a lightweight product brief/i.test(text)) return text;
+  return `a better way to ${text.replace(/^(to\s+)/i, '')}`;
+}
+
+export function inferAudience(name, brief, category = '') {
   const text = brief.toLowerCase();
+  if (['founder', 'founders', 'operator', 'operators', 'growth lead', 'marketing team'].some((word) => text.includes(word)) || (name || '').toLowerCase().includes('marketing os') || category === 'marketing software') return 'founders, operators, and lean marketing teams';
   if (['saree', 'fashion buyers', 'bridal', 'wedding', 'festive', 'occasionwear', 'ethnic wear'].some((word) => text.includes(word))) return 'fashion-conscious women shopping for weddings, festivals, and special occasions';
   if (text.includes('clinic')) return 'clinic owners and practice managers';
   if (['b2b', 'team', 'sales', 'ops'].some((word) => text.includes(word))) return 'operators and decision-makers';
@@ -431,7 +462,7 @@ export function inferAudience(brief) {
 
 export function inferBusinessModel(brief, category) {
   const text = brief.toLowerCase();
-  if (['subscription', 'saas', 'software', 'platform', 'crm'].some((word) => text.includes(word))) return 'b2b_saas';
+  if (category === 'marketing software' || ['subscription', 'saas', 'software', 'platform', 'crm', 'byok', 'api key', 'workflow', 'operating system'].some((word) => text.includes(word))) return 'b2b_saas';
   if (['course', 'coaching', 'cohort'].some((word) => text.includes(word))) return 'education';
   if (['clinic', 'agency', 'service'].some((word) => text.includes(word))) return 'service_business';
   if (category.includes('brand') || ['ecommerce', 'shop', 'store', 'retail', 'boutique', 'fashion', 'saree', 'apparel'].some((word) => text.includes(word))) return 'ecommerce';
