@@ -88,6 +88,19 @@ export async function callLLM({
   throw new Error(`Unsupported LLM provider: ${provider}. Use anthropic, openai, gemini, or openrouter.`);
 }
 
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function normalizeGeminiTools(tools = []) {
+  return tools.map((tool) => {
+    if (tool?.type === 'google_search') {
+      return { googleSearch: {} };
+    }
+    return tool;
+  });
+}
+
 /* ------------------------------------------------------------------ */
 /*  Provider implementations                                          */
 /* ------------------------------------------------------------------ */
@@ -165,28 +178,55 @@ async function callOpenAI({ apiKey, model, systemPrompt, userPrompt, temperature
 
 async function callGemini({ apiKey, model, systemPrompt, userPrompt, temperature, maxTokens, tools = [] }) {
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
-  const body = {
+  const normalizedTools = normalizeGeminiTools(tools);
+
+  const makeBody = (resolvedTools) => ({
     systemInstruction: systemPrompt ? { parts: [{ text: systemPrompt }] } : undefined,
     contents: [{ role: 'user', parts: [{ text: userPrompt }] }],
     generationConfig: {
       temperature,
       maxOutputTokens: maxTokens,
     },
-    tools: tools.length ? tools : undefined,
-  };
-
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
+    tools: resolvedTools.length ? resolvedTools : undefined,
   });
 
-  if (!res.ok) {
-    const errBody = await res.text();
-    throw new Error(`Gemini error ${res.status}: ${errBody.slice(0, 300)}`);
+  const attemptRequest = async (resolvedTools) => {
+    let lastErr = null;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(makeBody(resolvedTools)),
+      });
+
+      if (res.ok) {
+        return res.json();
+      }
+
+      const errBody = await res.text();
+      lastErr = new Error(`Gemini error ${res.status}: ${errBody.slice(0, 500)}`);
+
+      if ((res.status === 503 || res.status === 429) && attempt < 2) {
+        await sleep(1200 * (attempt + 1));
+        continue;
+      }
+
+      throw lastErr;
+    }
+    throw lastErr || new Error('Gemini request failed');
+  };
+
+  let data;
+  try {
+    data = await attemptRequest(normalizedTools);
+  } catch (err) {
+    const msg = err?.message || '';
+    const hadTools = normalizedTools.length > 0;
+    const toolSchemaFailure = hadTools && /tools\[0\]|Unknown name|INVALID_ARGUMENT/i.test(msg);
+    if (!toolSchemaFailure) throw err;
+    data = await attemptRequest([]);
   }
 
-  const data = await res.json();
   return {
     text: data.candidates?.[0]?.content?.parts?.[0]?.text ?? '',
     usage: {
