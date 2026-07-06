@@ -1,48 +1,209 @@
 # Marketing OS
 
-CEO-grade, Cloudflare-hosted marketing operating system that turns a lightweight product brief into a board-ready strategy pack: market research, competitor intelligence, customer insights, brand system, logo pack, social creatives, downloadable reports, and ZIP exports.
+CEO-grade, Cloudflare-hosted marketing operating system that turns a lightweight product brief into a research-first, board-ready strategy pack — market research, competitor intelligence, customer insights, brand system, logo pack, social creatives, and downloadable reports.
 
-**Live demo:** https://arjun-marketing-os.srksourabh.workers.dev  
+**Live demo:** https://arjun-marketing-os.srksourabh.workers.dev
 **GitHub repo:** https://github.com/srksourabh/marketing-os
 
 ## Overview
 
-Marketing OS is built for a draft-first workflow:
+Most AI marketing demos land at one of two bad extremes: raw LLM text dumps with no packaging, or pretty creative output with shallow strategy underneath. Marketing OS exists to close that gap.
 
-- start with a product name and short description
-- force research before creative work
-- generate presentable, executive-style artifacts instead of raw JSON
-- export deliverables as Word-friendly `.doc`, HTML, PDF-ready print views, and bundled ZIP packages
-- create visual assets with AI while keeping brand logic grounded in product/category analysis
+Give it a product name and a short description, and it:
 
-This repo currently contains two application tracks:
+1. infers what the product actually is and what category it competes in
+2. forces research (market, competitors, customers) to run *before* any creative work
+3. builds a brand system and creative assets grounded in that research
+4. packages everything as presentable, executive-style deliverables — not JSON dumps
+5. lets you download the result as `.doc`, HTML, PDF-ready print views, or a bundled ZIP
 
-1. **`cloudflare/`** — the primary public product, deployed on Cloudflare Workers
-2. **`app/`** — the earlier FastAPI implementation and test harness used for prototyping and API validation
+The repo contains two application tracks:
 
-## Live product
+- **`cloudflare/`** — the primary public product, a Cloudflare Worker that serves the live demo
+- **`app/`** — an earlier FastAPI implementation kept as a local Python test harness / reference
 
-The production demo is live here:
+## Key features
 
-**https://arjun-marketing-os.srksourabh.workers.dev**
+- **Analysis-first enforcement** — brand, logo, and social deliverables automatically pull in market research, competitor intel, and customer insights as prerequisites, so creative work is never generated ungrounded
+- **Category-sensitive logic** — fashion/e-commerce briefs follow different strategy and creative paths than SaaS briefs
+- **Bring-your-own-key LLM support** — works with Anthropic, OpenAI, Gemini, or OpenRouter keys, auto-detected from the key prefix, with separate "reasoning" and "fast" model tiers
+- **Streaming generation** — the Worker's `/run` endpoint streams progress over Server-Sent Events as each node in the 23-node deliverable DAG completes
+- **23 selectable deliverables** — from a one-line product summary up to a full CEO growth brief, brand identity suite, logo pack, and master board pack
+- **Downloadable, executive-formatted output** — Word-friendly `.doc`, HTML, print-ready views, and a full ZIP bundle export
+- **AI + deterministic creative assets** — SVG logo/icon marks generated deterministically (so wording is always exact) alongside AI-generated logo concept and social image variants
 
-### What the live demo produces
+## Tech stack
 
-| Area | Deliverables |
+| Layer | Technology |
 |---|---|
-| Research | Market research, competitor intelligence, customer insights |
-| Brand | Brand identity suite, positioning, vision, palette, voice |
-| Creative | Logo pack, icon mark, social content, image prompts, generated visual variants |
-| Executive packaging | Master board pack, Word-friendly docs, HTML docs, PDF-ready print views |
-| Ops | Content backlog, execution backlog, campaign plan, cron-ready operating rhythm |
-| Bundling | Full ZIP export with curated artifacts |
+| Primary product (public demo) | Cloudflare Workers, vanilla JS (ES modules), Cloudflare Workers Static Assets |
+| LLM providers (BYOK) | Anthropic Claude, OpenAI, Google Gemini, OpenRouter — called directly via `fetch`, no SDK |
+| Image generation | Gemini / OpenAI image APIs |
+| Prototype backend | Python 3.13, FastAPI, Uvicorn |
+| Prototype dependency management | `uv` (with `pyproject.toml` / `uv.lock`), plus `requirements.txt` for Render |
+| Testing | `pytest` (Python test harness in `tests/`) |
+| Alternate deployment path | Render (`render.yaml`, runs the FastAPI app) |
 
-### Quality guardrails built into the product
+## Architecture
 
-- **Analysis-first enforcement** — brand, logo, and social outputs auto-require earlier research steps
-- **Category-sensitive logic** — fashion/ecommerce briefs now follow different strategy and creative paths than SaaS briefs
-- **Executive formatting** — outputs are packaged as deliverables, not debug payloads
-- **Downloadable artifacts** — the system returns assets a CEO can review, forward, and archive
+```mermaid
+flowchart TD
+    U[User: product name + description] --> N[Input normalization]
+    N --> PI[Product / category inference]
+    PI --> AF[Analysis-first dependency expansion]
+
+    AF --> MR[Market research]
+    AF --> CI[Competitor intelligence]
+    AF --> CU[Customer insights]
+
+    MR --> BS[Brand system: vision, positioning,<br/>voice, palette, tagline]
+    CI --> BS
+    CU --> BS
+
+    BS --> LOGO[Logo pack: SVG marks +<br/>AI concept variants]
+    BS --> SOCIAL[Social content pack:<br/>captions, hashtags, CTAs]
+    LOGO --> SOCIAL
+
+    LOGO --> PKG[Document packaging]
+    SOCIAL --> PKG
+    BS --> PKG
+    MR --> PKG
+    CI --> PKG
+    CU --> PKG
+
+    PKG --> DOC[.doc / HTML / print-ready views]
+    PKG --> BOARD[Master board pack]
+    PKG --> ZIP[Full ZIP bundle export]
+
+    subgraph Worker["cloudflare/ — Cloudflare Worker (public product)"]
+      N
+      PI
+      AF
+      MR
+      CI
+      CU
+      BS
+      LOGO
+      SOCIAL
+      PKG
+      DOC
+      BOARD
+      ZIP
+    end
+
+    LLM[(BYOK LLM: Anthropic / OpenAI /<br/>Gemini / OpenRouter)] -.-> MR
+    LLM -.-> CI
+    LLM -.-> CU
+    LLM -.-> BS
+    LLM -.-> LOGO
+    LLM -.-> SOCIAL
+
+    subgraph Alt["app/ — FastAPI prototype (local dev + regression tests)"]
+      API[FastAPI endpoints] --> CMO[ChiefMarketingOfficer orchestration]
+      CMO --> AGENTS[Specialist agents:<br/>market research, competitor intel,<br/>customer insights, CRO, SEO, email, designer]
+    end
+```
+
+More detail: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
+
+## Repository layout
+
+```text
+marketing-os/
+├── app/                    # FastAPI prototype and orchestration modules
+│   ├── agents/             # specialist marketing agents (SEO, CRO, email, designer, etc.)
+│   ├── orchestration/       # chief marketing officer flow
+│   ├── services/            # product inference / shared services
+│   └── static/               # prototype web UI
+├── cloudflare/             # primary Worker-based public product
+│   ├── public/              # Worker frontend (static assets)
+│   ├── src/                 # Worker backend: orchestrator, LLM client, asset generation
+│   └── wrangler.toml         # deployment config
+├── docs/
+│   ├── ARCHITECTURE.md      # deeper architecture notes
+│   └── screenshots/         # README screenshots
+├── scripts/                # support scripts, e.g. screenshot capture
+├── tests/                  # Python API and orchestration test coverage
+├── pyproject.toml          # Python project metadata (uv)
+├── requirements.txt        # Render / simple pip install path
+└── render.yaml             # optional FastAPI deployment blueprint (Render)
+```
+
+## Setup & installation
+
+### Prerequisites
+
+- Python 3.13+
+- [`uv`](https://docs.astral.sh/uv/) for the Python side
+- Node.js (for `npx wrangler` and the optional screenshot script)
+- A Cloudflare account (only needed if you want to deploy the Worker yourself)
+
+### Clone the repo
+
+```bash
+git clone https://github.com/srksourabh/marketing-os.git
+cd marketing-os
+```
+
+### Install Python dependencies (FastAPI prototype)
+
+```bash
+uv sync --active --all-extras
+```
+
+### Run the FastAPI app locally
+
+```bash
+uv run --active uvicorn app.main:app --host 127.0.0.1 --port 8008
+```
+
+Then open `http://127.0.0.1:8008` in a browser.
+
+### Run the Python test suite
+
+```bash
+uv run --active pytest -q
+```
+
+### Run the Cloudflare Worker locally
+
+```bash
+cd cloudflare
+npx wrangler dev
+```
+
+### Deploy the Worker to Cloudflare
+
+```bash
+cd cloudflare
+npx wrangler deploy
+```
+
+The Worker's optional live image generation needs a Gemini key set as a secret:
+
+```bash
+npx wrangler secret put GEMINI_API_KEY
+```
+
+(BYOK requests from the browser can also supply their own Anthropic/OpenAI/Gemini/OpenRouter key at request time, so this secret is only needed if you want server-side image generation without asking every visitor for a key.)
+
+### Deploy the FastAPI app to Render (alternate path)
+
+Render picks up `render.yaml` automatically and runs:
+
+```bash
+pip install -r requirements.txt
+uvicorn app.main:app --host 0.0.0.0 --port $PORT
+```
+
+## Usage
+
+1. Open the live demo (or your local deployment) in a browser.
+2. Enter a product name and a short description of what it does.
+3. Select which deliverables you want (market research, brand identity suite, logo pack, social content, master board pack, full ZIP export, etc.). Selecting a downstream deliverable (e.g. logo pack) automatically pulls in its research prerequisites.
+4. If using the live BYOK `/run` flow, paste an Anthropic, OpenAI, Gemini, or OpenRouter API key — the provider and default models are inferred from the key itself.
+5. Watch generation stream in as each stage (research → brand → creative → packaging) completes.
+6. Download individual deliverables (`.doc`, HTML, print-ready PDF view) or the full ZIP bundle.
 
 ## Screenshots
 
@@ -54,181 +215,26 @@ The production demo is live here:
 
 ![Marketing OS result card](docs/screenshots/marketing-os-result-card.png)
 
-## Why this exists
+## Quality guardrails built into the product
 
-Most AI marketing demos stop at one of two bad extremes:
-
-- raw LLM text dumps with no packaging
-- pretty creative output with shallow strategy underneath
-
-Marketing OS is designed to close that gap by combining:
-
-- structured product inference
-- research-first strategy generation
-- presentable board-ready formatting
-- downloadable artifact generation
-- public demo hosting on Cloudflare
-
-## Core product capabilities
-
-### 1. Research and strategy
-
-- Market analysis with whitespace, demand drivers, risk signals, and positioning moves
-- Competitor intelligence with battlecards, blind spots, disruptable assumptions, and perceptual framing
-- Customer insight generation covering jobs-to-be-done, objections, motivations, proof needed, and decision criteria
-
-### 2. Brand system
-
-- Brand vision and positioning
-- Tagline, voice, reasons-to-believe, archetype, palette, typography direction
-- Category-aware messaging logic
-
-### 3. Creative outputs
-
-- SVG logo and icon assets
-- AI-generated logo concept and variant prompts
-- Social content pack with captions, hashtags, CTA framing, and visual direction
-- Multi-variant image generation flow for logos and social creative
-
-### 4. Executive deliverables
-
-- CEO-grade market report
-- Competitor intelligence pack
-- Customer insights pack
-- Brand identity suite
-- Master board pack
-- Full ZIP bundle export
-
-## Architecture
-
-```text
-User brief
-   ↓
-Product/category inference
-   ↓
-Research layer
-   ├─ market research
-   ├─ competitor intelligence
-   └─ customer insights
-   ↓
-Brand system
-   ↓
-Asset generation
-   ├─ logo pack
-   ├─ social creative
-   └─ downloadable docs
-   ↓
-Packaging layer
-   ├─ master board pack
-   ├─ print-ready views
-   └─ ZIP bundle
-```
-
-More detail: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
-
-## Repository layout
-
-```text
-marketing-os/
-├── app/                    # FastAPI prototype and orchestration modules
-│   ├── agents/             # specialist marketing agents
-│   ├── orchestration/      # chief marketing officer flow
-│   ├── services/           # product inference / shared services
-│   └── static/             # prototype web UI
-├── cloudflare/             # primary Worker-based public product
-│   ├── public/             # Worker frontend
-│   ├── src/                # Worker backend / artifact generator
-│   └── wrangler.toml       # deployment config
-├── docs/
-│   └── screenshots/        # README assets
-├── scripts/                # support scripts, e.g. screenshot capture
-├── tests/                  # API and orchestration coverage
-├── pyproject.toml          # Python project metadata
-├── requirements.txt        # Render / simple Python install path
-└── render.yaml             # optional FastAPI deployment blueprint
-```
-
-## Local development
-
-### Prerequisites
-
-- Python 3.13+
-- `uv`
-- Node.js 22+ if you want to run the screenshot tooling
-
-### Install Python dependencies
-
-```bash
-cd /path/to/marketing-os
-uv sync --active --all-extras
-```
-
-### Run the FastAPI app locally
-
-```bash
-uv run --active uvicorn app.main:app --host 127.0.0.1 --port 8008
-```
-
-### Run tests
-
-```bash
-uv run --active pytest -q
-```
-
-## Cloudflare Worker deployment
-
-The primary live product is the Worker app in `cloudflare/`.
-
-### Deploy
-
-```bash
-cd cloudflare
-npx wrangler deploy
-```
-
-### Required secret for live image generation
-
-```bash
-npx wrangler secret put GEMINI_API_KEY
-```
-
-## FastAPI / Render deployment
-
-The FastAPI app remains useful for local API development and regression testing.
-
-Deploy path:
-
-```bash
-# Render uses this command from render.yaml
-uvicorn app.main:app --host 0.0.0.0 --port $PORT
-```
-
-## Verification status
-
-Recently verified in this repo/workspace:
-
-- Cloudflare Worker deployed and reachable publicly
-- ZIP bundle export working
-- master board pack working
-- multi-variant logo and social asset generation working
-- analysis-first dependency enforcement working
-- silk saree / fashion inference corrected so the system no longer falls back to SaaS-style brand output
-- Python test suite passing locally (`15 passed`)
+- **Analysis-first enforcement** — brand, logo, and social outputs auto-require earlier research steps
+- **Category-sensitive logic** — fashion/e-commerce briefs follow different strategy and creative paths than SaaS briefs
+- **Executive formatting** — outputs are packaged as deliverables, not debug payloads
+- **Downloadable artifacts** — the system returns assets a CEO can review, forward, and archive
 
 ## Known design choices
 
-- The Worker is the main product surface
-- The FastAPI app is still retained because it gives a simpler Python testbed
+- The Cloudflare Worker is the main product surface; the FastAPI app is retained as a simpler Python testbed for orchestration ideas and regression tests
 - AI-generated PNG logos are treated as **concept marks**, while deterministic SVG text assets remain the safer path for exact wording
 - Exported `.doc` files are HTML-compatible Word documents for speed and portability
 
 ## Next useful improvements
 
-- move research generation from deterministic heuristics toward stronger retrieval-backed market/competitor inputs
-- add a proper provider abstraction for OpenAI Images / Nano Banana / Gemini switching
-- add persistent artifact storage rather than response-embedded binaries
-- add CI deploy previews for the Worker
-- split Worker logic into smaller modules for easier maintenance
+- Move research generation from deterministic heuristics toward stronger retrieval-backed market/competitor inputs
+- Add a proper provider abstraction for OpenAI Images / Nano Banana / Gemini switching
+- Add persistent artifact storage rather than response-embedded binaries
+- Add CI deploy previews for the Worker
+- Split Worker logic into smaller modules for easier maintenance
 
 ## License
 
