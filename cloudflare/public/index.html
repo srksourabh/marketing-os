@@ -65,6 +65,23 @@
     .check input { width: 18px; height: 18px; margin-top: 2px; accent-color: var(--accent); }
     .check strong { display: block; margin-bottom: 5px; }
     .check span, .hint, .tiny, .status { color: var(--muted); font-size: 14px; line-height: 1.6; }
+    .warning-note {
+      display: grid;
+      gap: 6px;
+      padding: 12px 14px;
+      border-radius: 14px;
+      border: 1px solid rgba(251, 191, 36, 0.22);
+      background: rgba(120, 53, 15, 0.18);
+      color: #fde68a;
+      font-size: 13px;
+      line-height: 1.55;
+    }
+    .warning-note strong {
+      color: #fef3c7;
+      font-size: 12px;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
     .workflow-plan { display: grid; gap: 10px; padding: 14px; border-radius: 18px; background: rgba(7, 14, 28, 0.82); border: 1px solid rgba(148, 163, 184, 0.12); }
     .byok-grid { display: grid; grid-template-columns: minmax(180px, 0.35fr) minmax(0, 1fr); gap: 12px; }
     .workflow-steps { display: flex; flex-wrap: wrap; gap: 8px; }
@@ -175,7 +192,10 @@
                 </select>
                 <input id="byok-api-key" name="byok_api_key" type="password" placeholder="Paste your Gemini or OpenAI image key" autocomplete="off" spellcheck="false" />
               </div>
-              <div class="hint">Optional. Used for logo pack and social media image generation.</div>
+              <div class="warning-note">
+                <strong>Image generation note</strong>
+                <span>You’re using a BYOK flow. Logo and social-image generation require a valid Gemini or OpenAI image-capable API key. If image rendering is unavailable for the key or model you provide, the app will still generate the strategy pack and return prompt-ready creative directions instead of final images.</span>
+              </div>
             </div>
           </div>
 
